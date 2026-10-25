@@ -270,6 +270,40 @@
 
 ---
 
+ ## 2.9 Architecture and Deployment Model
+
+ The application shall be split into separate client and backend components:
+
+ - **MAUI Client Application** (presentation and client-side interaction)
+- **ASP.NET Core Web API** (business/application services and data access boundary)
+- **SQLite database file persisted through Docker named volume**
+
+ The API and database are intended to run in Docker-based environments, especially for local development using Docker Compose.
+
+ ### MVVM in the Split Architecture
+
+ MVVM remains the client architecture pattern:
+
+ - **Views** and **ViewModels** stay in the MAUI project.
+- ViewModels call service abstractions that use HTTP clients.
+- ViewModels must not directly access persistence or infrastructure implementations.
+- Backend-side business rules, validation, and persistence are implemented in the API layer.
+
+ ### Shared Contracts
+
+ The solution should include a shared class library for API request/response contracts (DTOs) used by both MAUI and API projects.
+
+ ### Initial Delivery Scope
+
+ The first implementation milestone focuses on a backend skeleton:
+
+ - Basic API project structure
+- Containerized API runtime
+- SQLite persistence wiring with named volume
+- No authentication in the initial backend skeleton milestone
+
+---
+
  # 3\. Partition the Application into Logical Subsystems
 
  ## 3.1 User Management
@@ -514,6 +548,43 @@
 6. **Notification Service**
 
  These subsystems together provide the core functionality required for customers, hotel staff, and administrators while addressing the application's functional and non-functional requirements.
+
+---
+
+ # 5\. Database Schema Overview
+
+ A simple initial database schema has been defined in:
+
+ - `Documentation/DatabaseSchema.md`
+
+ The schema is intentionally minimal to support backend API development and unit testing before full Docker and database deployment tasks are completed.
+
+ ## Core Tables
+
+ - `Users`
+- `Hotels`
+- `Rooms`
+- `Reservations`
+- `Payments`
+- `Notifications` (optional in first backend skeleton)
+
+ ## Core Relationships
+
+ - One hotel has many rooms.
+- One user has many reservations.
+- One room has many reservations.
+- One reservation has many payments.
+- One user has many notifications.
+
+ ## Key Constraints
+
+ - User email must be unique.
+- Room number must be unique per hotel.
+- Check-in date must be before check-out date.
+- Overlapping active reservations for the same room are not allowed.
+- Guest count must be positive and within room capacity.
+
+ This structure supports the split architecture (MAUI client + ASP.NET Core API) and allows persistence implementation to be added incrementally.
 
 ## Diagrams
 
