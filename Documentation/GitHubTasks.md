@@ -10,32 +10,99 @@ This document classifies the work in `SoftwareSpec.md` as GitHub parent issues (
 - **Dependencies**: issue keys that should be completed first.
 - Each task should be independently actionable and should include tests where applicable.
 
-## Architecture baseline: MVVM
+## Architecture baseline: MAUI MVVM + ASP.NET Core API
 
-The application is a .NET MAUI client using **Model-View-ViewModel (MVVM)**:
+The application is split into:
 
-- **Models** represent domain data and state, including users, hotels, rooms, bookings, payments, and notifications.
-- **Views** are XAML pages and reusable UI components. They display state and bind user actions to commands.
-- **ViewModels** expose bindable state, validation errors, loading state, and commands. They coordinate use cases through services and must not contain direct persistence or HTTP implementation details.
-- **Services** provide authentication, API/data access, payment-provider, notification, localization, logging, and configuration abstractions.
-- **Repositories/adapters** isolate persistence and external providers from the ViewModels.
-- **Navigation and dependency injection** are centralized and testable.
+- **.NET MAUI Client** (MVVM presentation and interaction)
+- **ASP.NET Core Web API** (application services and backend boundary)
+- **SQLite data file with Docker named volume persistence**
+
+MVVM remains the client pattern:
+
+- **Models** represent domain and UI state in the MAUI client.
+- **Views** are XAML pages/components.
+- **ViewModels** expose bindable state and commands, and call service abstractions.
+- ViewModels must not contain direct persistence or HTTP infrastructure implementation details.
+
+Backend responsibilities:
+
+- API endpoints, validation, business rules, and data-access implementation.
+- Containerized runtime and environment-specific configuration.
+
+Shared responsibilities:
+
+- **Shared.Contracts** class library for API DTOs and contract types used by both client and backend.
 
 Recommended feature organization:
 
 ```text
-Features/
-  UserManagement/{Models,Views,ViewModels,Services}
-  HotelRooms/{Models,Views,ViewModels,Services}
-  Search/{Models,Views,ViewModels,Services}
-  Booking/{Models,Views,ViewModels,Services}
-  Payments/{Models,Views,ViewModels,Services}
-  Notifications/{Models,Views,ViewModels,Services}
-Core/
-  Services/Repositories/Navigation/Validation/Security/Localization
+Client (MAUI)
+  Features/
+    UserManagement/{Models,Views,ViewModels,Services}
+    HotelRooms/{Models,Views,ViewModels,Services}
+    Search/{Models,Views,ViewModels,Services}
+    Booking/{Models,Views,ViewModels,Services}
+    Payments/{Models,Views,ViewModels,Services}
+    Notifications/{Models,Views,ViewModels,Services}
+  Core/
+    Services/Navigation/Validation/Security/Localization
+
+Backend (ASP.NET Core API)
+  Features/
+    UserManagement
+    HotelRooms
+    Search
+    Booking
+    Payments
+    Notifications
+  Infrastructure/
+    Data
+    Repositories
+
+Shared/
+  Contracts
 ```
 
 ---
+
+## EPIC-00 — Establish client/server split and container platform
+
+**Labels:** `epic`, `architecture`, `backend`, `docker`, `priority:high`
+
+**Goal:** Bootstrap a MAUI client + ASP.NET Core API architecture, containerized backend runtime, and shared contracts.
+
+### Tasks
+
+- **TASK-00.01 — Add ASP.NET Core API and Shared.Contracts projects to the solution**
+  - **Labels:** `task`, `architecture`, `backend`
+  - **Dependencies:** none
+  - **Acceptance criteria:** Solution contains MAUI client, API backend, and shared contract library projects with successful restore/build.
+
+- **TASK-00.02 — Define client/backend boundaries and service abstractions**
+  - **Labels:** `task`, `architecture`, `mvvm`
+  - **Dependencies:** TASK-00.01
+  - **Acceptance criteria:** MAUI ViewModels depend on interfaces and contract DTOs; direct persistence access is removed from client-side feature logic.
+
+- **TASK-00.03 — Add API containerization and Docker Compose orchestration**
+  - **Labels:** `task`, `docker`, `operations`
+  - **Dependencies:** TASK-00.01
+  - **Acceptance criteria:** API has Dockerfile/.dockerignore and starts through docker compose with environment configuration.
+
+- **TASK-00.04 — Configure SQLite persistence with named volume in Compose**
+  - **Labels:** `task`, `data`, `docker`, `sqlite`
+  - **Dependencies:** TASK-00.03
+  - **Acceptance criteria:** SQLite file persists across container restarts via named volume and API can read/write successfully.
+
+- **TASK-00.05 — Deliver backend skeleton endpoints without auth (phase 1)**
+  - **Labels:** `task`, `backend`, `api`
+  - **Dependencies:** TASK-00.02, TASK-00.04
+  - **Acceptance criteria:** Health endpoint and at least one sample feature endpoint are available; no authentication is required in this initial milestone.
+
+- **TASK-00.06 — Add local setup documentation for MAUI + API + Docker workflow**
+  - **Labels:** `task`, `documentation`, `dev-experience`
+  - **Dependencies:** TASK-00.03, TASK-00.04
+  - **Acceptance criteria:** Documentation covers prerequisites, compose startup, MAUI client configuration to API base URL, and troubleshooting basics.
 
 ## EPIC-01 — Establish the MVVM application foundation
 
@@ -352,7 +419,7 @@ Core/
 - **TASK-09.06 — Maintain architecture, API, deployment, and user documentation**
   - **Labels:** `task`, `documentation`
   - **Dependencies:** TASK-01.01, TASK-08.06
-  - **Acceptance criteria:** Documentation describes MVVM boundaries, APIs, configuration, deployment, recovery, user guides, FAQs, and help articles.
+  - **Acceptance criteria:** Documentation describes MAUI MVVM client boundaries, API contracts, Docker Compose deployment, configuration, recovery, user guides, FAQs, and help articles.
 
 - **TASK-09.07 — Create CI validation and release checklist**
   - **Labels:** `task`, `ci`, `release`
@@ -361,15 +428,16 @@ Core/
 
 ## Suggested implementation order
 
-1. EPIC-01 — MVVM foundation
-2. EPIC-02 — Identity and roles
-3. EPIC-03 — Hotel and room management
-4. EPIC-04 — Search and recommendations
-5. EPIC-05 — Booking management
-6. EPIC-06 — Payment processing
-7. EPIC-07 — Notifications
-8. EPIC-08 — Security and operations (security tasks should begin with the foundation)
-9. EPIC-09 — Quality, localization, and release readiness (testing should begin alongside each epic)
+1. EPIC-00 — Client/server split and container platform
+2. EPIC-01 — MVVM foundation
+3. EPIC-02 — Identity and roles
+4. EPIC-03 — Hotel and room management
+5. EPIC-04 — Search and recommendations
+6. EPIC-05 — Booking management
+7. EPIC-06 — Payment processing
+8. EPIC-07 — Notifications
+9. EPIC-08 — Security and operations (security tasks should begin with the foundation)
+10. EPIC-09 — Quality, localization, and release readiness (testing should begin alongside each epic)
 
 ## Script parsing notes
 
