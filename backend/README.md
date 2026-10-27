@@ -134,3 +134,9 @@ The API URL defaults to `http://localhost:5047`; override it with `?api=http://h
 - Email delivery for password reset
 - Automated tests
 - Notifications table (optional in the schema doc)
+
+## Known issues
+- Everything is Development-only. The credentials, the dev reset token and the docs are for local use, and Postgres is published on 5432. It's fine for development and not for deployment.
+- Payments are simulated. Staff mark them complete by hand.
+- Password reset only works in Development, because it returns a dev token instead of sending email.
+- No automated tests and no CI yet.
