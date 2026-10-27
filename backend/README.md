@@ -179,6 +179,20 @@ All routes need a token. Customers only see and manage their own reservations; a
 
 Dates are `yyyy-MM-dd`. The server sets `hotelId` from the room and calculates `totalPrice` (nights × room price). Check-out day is free for the next check-in. There is no delete; cancel instead.
 
+### Payments
+
+All routes need a token. Customers only see and manage payments for their own reservations (others are 404). There is no real payment provider yet: payments are recorded and moved through their states by the API.
+
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| GET | `/api/payments` | token | Paged list. Filters: `reservationId`, `status`, `page`, `pageSize` |
+| GET | `/api/payments/{id}` | owner or Staff/Admin | One payment |
+| POST | `/api/payments` | owner or Staff/Admin | `{ reservationId, provider }` with provider `Visa`, `PayPal` or `MobilePay`. Creates a `Pending` payment for the amount still owed, in EUR. 409 if the reservation is cancelled, already paid, or already has a pending payment |
+| POST | `/api/payments/{id}/complete` | Staff/Admin | `{ succeeded, providerTransactionId? }`. Marks a pending payment `Succeeded` (and confirms a pending reservation) or `Failed`. Stands in for a provider callback |
+| POST | `/api/payments/{id}/cancel` | owner or Staff/Admin | Pending payment becomes `Failed` |
+
+The amount is always calculated by the server from the reservation. Payments cannot be deleted, and refunds are not modelled: cancelling a paid reservation leaves its payment untouched.
+
 ### Roles
 
 - **Customer:** manages their own account.
@@ -348,7 +362,7 @@ Notes for real use:
 
 ## Not done yet
 
-- Payment endpoints (hotels, rooms and reservations are done)
+- Real payment provider integration and refunds (payment endpoints exist but are simulated)
 - CORS policy for browser clients on other origins, and an OpenAPI document
 - Containerizing the API (Dockerfile, adding it to Compose)
 - Email delivery for password reset
