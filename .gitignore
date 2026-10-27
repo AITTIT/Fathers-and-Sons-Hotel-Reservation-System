@@ -26,4 +26,3 @@ packages/
 *.jks
 *.pfx
 *.mobileprovision
-backend/HotelReservation.Api/Dockerfile

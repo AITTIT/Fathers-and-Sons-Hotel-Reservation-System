@@ -6,7 +6,7 @@ ASP.NET Core (.NET 9) Web API backed by PostgreSQL. It is client-agnostic: the M
 Client (MAUI / browser)  ->  ASP.NET Core API  ->  EF Core / Npgsql  ->  PostgreSQL (Docker)
 ```
 
-> **Status:** early development. Auth, users, hotels, rooms, reservations and payments (simulated, no real provider) are implemented. The API is not containerized yet; the `Dockerfile` is empty.
+> **Status:** early development. Auth, users, hotels, rooms, reservations and payments (simulated, no real provider) are implemented. The API and database run together in Docker Compose.
 
 ## Quick start
 
@@ -14,13 +14,20 @@ Requires the [.NET 9 SDK](https://dotnet.microsoft.com/download/dotnet/9.0) and 
 
 ```powershell
 cd backend
-docker compose up -d                              # PostgreSQL
-
-cd HotelReservation.Api
-dotnet run --launch-profile http                  # http://localhost:5047
+docker compose up -d --build        # PostgreSQL, API (http://localhost:5047) and test page (http://localhost:5500)
 ```
 
-On startup the API applies the EF migrations and creates the default admin (see below). `GET /health` is a liveness check.
+Then open http://localhost:5500/ and log in with the default admin (see below). Interactive API docs are at http://localhost:5047/scalar/v1.
+
+On startup the API applies the EF migrations and creates the default admin (see below). `GET /health` is a liveness check. Compose runs the API in Development mode with local-only settings (see `docker-compose.yml`).
+
+To debug the API from the IDE instead, start only the database and run the API yourself (stop the `api` container first, since both use port 5047):
+
+```powershell
+docker compose stop api
+cd HotelReservation.Api
+dotnet run --launch-profile http
+```
 
 ## API documentation
 
@@ -86,13 +93,13 @@ Development uses `default-admin@change.me` / `hoteladmin`. Without this config a
 
 ## Development test page
 
-[`test-client/index.html`](../test-client/index.html) lives outside the API project and calls it over HTTP like a real client. It has forms for the auth, user, hotel, room, reservation and payment endpoints, plus tables of what the logged-in role can see. Serve it from an origin listed in `Cors:AllowedOrigins`:
+[`test-client/index.html`](../test-client/index.html) lives outside the API project and calls it over HTTP like a real client. It has forms for the auth, user, hotel, room, reservation and payment endpoints, plus tables of what the logged-in role can see. Compose serves it on http://localhost:5500 (nginx, with the folder mounted so edits show on refresh); that origin is already in the API's CORS list. To serve it yourself instead:
 
 ```powershell
 python -m http.server 5500 --directory ..\test-client
 ```
 
-Open http://localhost:5500/. The API URL defaults to `http://localhost:5047`; override it with `?api=http://host:port`.
+The API URL defaults to `http://localhost:5047`; override it with `?api=http://host:port`.
 
 ## Tips
 
@@ -101,7 +108,7 @@ Open http://localhost:5500/. The API URL defaults to `http://localhost:5047`; ov
 
 ## Not done yet
 
-- Containerizing the API (Dockerfile, Compose service)
+- A production profile (no dev settings, HTTPS reverse proxy, unpublished Postgres port)
 - Real payment provider and refunds
 - Email delivery for password reset
 - Automated tests
