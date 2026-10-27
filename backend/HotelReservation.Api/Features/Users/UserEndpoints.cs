@@ -117,7 +117,7 @@ public static class UserEndpoints
             await db.SaveChangesAsync(ct);
 
             return Results.Ok(new { message = "Password changed." });
-        });
+        }).RequireRateLimiting(Policies.AuthRateLimit);
     }
 
     private static int? CallerId(ClaimsPrincipal caller) =>

@@ -1,6 +1,7 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using HotelReservation.Api.Data;
+using HotelReservation.Api.Features.Common;
 using Microsoft.EntityFrameworkCore;
 
 namespace HotelReservation.Api.Features.Users;
@@ -51,7 +52,7 @@ public static class AuthEndpoints
             }
 
             return Results.Created($"/api/users/{user.Id}", UserResponse.From(user));
-        });
+        }).RequireRateLimiting(Policies.AuthRateLimit);
 
         group.MapPost("/login", async (LoginRequest request, AppDbContext db, TokenService tokens, CancellationToken ct) =>
         {
@@ -67,7 +68,7 @@ public static class AuthEndpoints
 
             var (token, expires) = tokens.Create(user);
             return Results.Ok(new LoginResponse(token, expires, UserResponse.From(user)));
-        });
+        }).RequireRateLimiting(Policies.AuthRateLimit);
 
         group.MapGet("/me", async (ClaimsPrincipal principal, AppDbContext db, CancellationToken ct) =>
         {
@@ -109,7 +110,7 @@ public static class AuthEndpoints
             return env.IsDevelopment()
                 ? Results.Ok(new { message, devToken = rawToken })
                 : Results.Ok(new { message });
-        });
+        }).RequireRateLimiting(Policies.AuthRateLimit);
 
         group.MapPost("/reset-password", async (ResetPasswordRequest request, AppDbContext db, CancellationToken ct) =>
         {
@@ -134,7 +135,7 @@ public static class AuthEndpoints
             await db.SaveChangesAsync(ct);
 
             return Results.Ok(new { message = "Password has been reset." });
-        });
+        }).RequireRateLimiting(Policies.AuthRateLimit);
     }
 
     internal static string? PasswordError(string? password)

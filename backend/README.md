@@ -112,6 +112,9 @@ All use the password `Password123!`.
 | `Jwt:Key` | HMAC signing key. **Required, at least 32 characters**; the API refuses to start without it |
 | `Jwt:Issuer`, `Jwt:Audience`, `Jwt:ExpiryMinutes` | Optional; default `HotelReservation.Api`, `HotelReservation.Client`, `60` |
 | `Cors:AllowedOrigins` | Array of browser origins allowed to call the API (e.g. `http://localhost:5500`). Empty means no cross-origin browser access. MAUI is unaffected |
+| `RateLimiting:AuthPermitLimit`, `RateLimiting:AuthWindowSeconds` | Max requests per client IP per window on the credential endpoints; defaults `10` per `60` seconds |
+
+**Rate limiting:** register, login, forgot-password, reset-password and change-password share one per-IP limit. Over the limit they return 429 with a `Retry-After` header. Behind a reverse proxy, configure forwarded headers so the limiter sees the real client IP.
 
 The committed `Jwt:Key` is a development placeholder. Outside development, supply real values through environment variables (e.g. `Jwt__Key`, `ConnectionStrings__Default`) or a secret store, never in source control.
 
