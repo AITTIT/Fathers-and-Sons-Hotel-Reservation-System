@@ -9,6 +9,8 @@ public record RegisterRequest(
 
 public record LoginRequest(string Email, string Password);
 
+public record LoginResponse(string Token, DateTime ExpiresAtUtc, UserResponse User);
+
 public record UserResponse(
     int Id,
     string Email,

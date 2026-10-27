@@ -1,3 +1,5 @@
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 using HotelReservation.Api.Data;
 using Microsoft.EntityFrameworkCore;
 
@@ -51,7 +53,7 @@ public static class AuthEndpoints
             return Results.Created($"/api/users/{user.Id}", UserResponse.From(user));
         });
 
-        group.MapPost("/login", async (LoginRequest request, AppDbContext db, CancellationToken ct) =>
+        group.MapPost("/login", async (LoginRequest request, AppDbContext db, TokenService tokens, CancellationToken ct) =>
         {
             if (string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrEmpty(request.Password))
                 return Results.BadRequest(new { error = "Email and password are required." });
@@ -63,8 +65,18 @@ public static class AuthEndpoints
             if (user is null || !valid)
                 return Results.Json(new { error = "Invalid email or password." }, statusCode: StatusCodes.Status401Unauthorized);
 
-            return Results.Ok(UserResponse.From(user));
+            var (token, expires) = tokens.Create(user);
+            return Results.Ok(new LoginResponse(token, expires, UserResponse.From(user)));
         });
+
+        group.MapGet("/me", async (ClaimsPrincipal principal, AppDbContext db, CancellationToken ct) =>
+        {
+            if (!int.TryParse(principal.FindFirstValue(JwtRegisteredClaimNames.Sub), out var id))
+                return Results.Unauthorized();
+
+            var user = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == id, ct);
+            return user is null ? Results.Unauthorized() : Results.Ok(UserResponse.From(user));
+        }).RequireAuthorization();
     }
 
     private static Dictionary<string, string[]> Validate(RegisterRequest r)

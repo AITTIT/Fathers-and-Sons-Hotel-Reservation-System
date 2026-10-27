@@ -13,9 +13,16 @@
     form { display: grid; gap: 6px; max-width: 320px; margin-bottom: 1rem; }
     .forms { display: flex; gap: 3rem; flex-wrap: wrap; }
     pre { background: #f4f4f4; padding: 8px; max-width: 700px; overflow: auto; }
+    #session { background: #eef; border: 1px solid #99c; padding: 8px 12px; margin-bottom: 1rem; display: flex; gap: 12px; align-items: center; }
+    #session.in { background: #efe; border-color: #6a6; }
   </style>
 </head>
 <body>
+  <div id="session">
+    <span id="who">Not logged in</span>
+    <button id="logout" hidden>Logout</button>
+  </div>
+
   <h1>Auth test</h1>
   <div class="forms">
     <form id="login">
@@ -74,7 +81,32 @@
         container.replaceChildren(p);
       }
     }
-    async function submitForm(e, url, refresh) {
+    const TOKEN_KEY = 'authToken';
+
+    function showUser(user) {
+      const who = document.getElementById('who');
+      document.getElementById('session').classList.toggle('in', !!user);
+      document.getElementById('logout').hidden = !user;
+      who.textContent = user
+        ? `Logged in as ${user.firstName} ${user.lastName} <${user.email}> [${user.role}] (id ${user.id})`
+        : 'Not logged in';
+    }
+
+    async function restoreSession() {
+      const token = localStorage.getItem(TOKEN_KEY);
+      if (!token) return showUser(null);
+      const res = await fetch('/api/auth/me', { headers: { Authorization: 'Bearer ' + token } });
+      if (res.ok) return showUser(await res.json());
+      localStorage.removeItem(TOKEN_KEY);
+      showUser(null);
+    }
+
+    document.getElementById('logout').onclick = () => {
+      localStorage.removeItem(TOKEN_KEY);
+      showUser(null);
+    };
+
+    async function submitForm(e, url, onSuccess) {
       e.preventDefault();
       const body = Object.fromEntries(new FormData(e.target));
       const out = document.getElementById('result');
@@ -86,16 +118,21 @@
         });
         const text = await res.text();
         let data = text;
-        try { data = JSON.stringify(JSON.parse(text), null, 2); } catch {}
+        let parsed = null;
+        try { parsed = JSON.parse(text); data = JSON.stringify(parsed, null, 2); } catch {}
         out.textContent = `${res.status} ${res.statusText}\n${data}`;
-        if (refresh && res.ok) load();
+        if (res.ok && onSuccess) onSuccess(parsed);
       } catch (err) {
         out.textContent = 'Request failed: ' + err.message;
       }
     }
-    document.getElementById('login').onsubmit = e => submitForm(e, '/api/auth/login', false);
-    document.getElementById('register').onsubmit = e => submitForm(e, '/api/auth/register', true);
+    document.getElementById('login').onsubmit = e => submitForm(e, '/api/auth/login', r => {
+      localStorage.setItem(TOKEN_KEY, r.token);
+      showUser(r.user);
+    });
+    document.getElementById('register').onsubmit = e => submitForm(e, '/api/auth/register', () => load());
     document.getElementById('refresh').onclick = load;
+    restoreSession();
     load();
   </script>
 </body>
