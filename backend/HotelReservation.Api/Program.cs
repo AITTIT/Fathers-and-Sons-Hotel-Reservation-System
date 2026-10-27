@@ -42,6 +42,7 @@ app.UseAuthorization();
 app.MapGet("/health", () => "Hotel Reservation API");
 
 app.MapAuthEndpoints();
+app.MapUserEndpoints();
 
 if (app.Environment.IsDevelopment())
 {

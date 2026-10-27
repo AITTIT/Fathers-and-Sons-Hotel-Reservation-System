@@ -41,6 +41,44 @@
       <button>Register</button>
     </form>
   </div>
+  <div class="forms" id="accountForms" hidden>
+    <form id="profile">
+      <h2>Edit profile</h2>
+      <input name="userId" type="number" placeholder="User id" title="Only admins can edit other users" required>
+      <input name="email" type="email" placeholder="Email" required>
+      <input name="firstName" placeholder="First name" required>
+      <input name="lastName" placeholder="Last name" required>
+      <input name="phone" placeholder="Phone (optional)">
+      <select name="role" title="Admins only">
+        <option value="">Role: unchanged</option>
+        <option>Customer</option>
+        <option>Staff</option>
+        <option>Admin</option>
+      </select>
+      <button>Save</button>
+    </form>
+    <form id="changePassword">
+      <h2>Change password</h2>
+      <input name="userId" type="number" placeholder="User id" required>
+      <input name="currentPassword" type="password" placeholder="Current password (not needed for admin on others)">
+      <input name="newPassword" type="password" placeholder="New password (min 8)" required>
+      <button>Change password</button>
+    </form>
+  </div>
+  <div class="forms">
+    <form id="forgot">
+      <h2>Forgot password</h2>
+      <input name="email" type="email" placeholder="Email" required>
+      <button>Request reset token</button>
+    </form>
+    <form id="reset">
+      <h2>Reset password</h2>
+      <input name="email" type="email" placeholder="Email" required>
+      <input name="token" placeholder="Reset token" required>
+      <input name="newPassword" type="password" placeholder="New password (min 8)" required>
+      <button>Reset password</button>
+    </form>
+  </div>
   <h3>Response</h3>
   <pre id="result">-</pre>
 
@@ -85,7 +123,20 @@
       }
     }
 
+    let currentUser = null;
+
+    function fillAccountForms(user) {
+      const profile = document.getElementById('profile');
+      for (const [name, value] of Object.entries({
+        userId: user.id, email: user.email, firstName: user.firstName, lastName: user.lastName, phone: user.phone ?? '', role: ''
+      })) profile.elements[name].value = value;
+      document.getElementById('changePassword').elements.userId.value = user.id;
+    }
+
     function showUser(user) {
+      currentUser = user;
+      document.getElementById('accountForms').hidden = !user;
+      if (user) fillAccountForms(user);
       const who = document.getElementById('who');
       document.getElementById('session').classList.toggle('in', !!user);
       document.getElementById('logout').hidden = !user;
@@ -109,16 +160,16 @@
       load();
     };
 
-    async function submitForm(e, url, onSuccess) {
+    async function submitForm(e, url, onSuccess, { method = 'POST', auth = false } = {}) {
       e.preventDefault();
-      const body = Object.fromEntries(new FormData(e.target));
+      // Empty fields are left out so optional values arrive as null.
+      const body = Object.fromEntries([...new FormData(e.target)].filter(([, v]) => v !== ''));
       const out = document.getElementById('result');
+      const headers = { 'Content-Type': 'application/json' };
+      const token = localStorage.getItem(TOKEN_KEY);
+      if (auth && token) headers.Authorization = 'Bearer ' + token;
       try {
-        const res = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body)
-        });
+        const res = await fetch(url, { method, headers, body: JSON.stringify(body) });
         const text = await res.text();
         let data = text;
         let parsed = null;
@@ -135,6 +186,27 @@
       load();
     });
     document.getElementById('register').onsubmit = e => submitForm(e, '/api/auth/register', () => load());
+
+    document.getElementById('profile').onsubmit = e => {
+      const id = e.target.elements.userId.value;
+      return submitForm(e, `/api/users/${id}`, updated => {
+        // Editing yourself refreshes the "logged in as" bar.
+        if (currentUser && updated.id === currentUser.id) showUser(updated);
+        load();
+      }, { method: 'PUT', auth: true });
+    };
+    document.getElementById('changePassword').onsubmit = e =>
+      submitForm(e, `/api/users/${e.target.elements.userId.value}/change-password`, null, { auth: true });
+
+    document.getElementById('forgot').onsubmit = e => submitForm(e, '/api/auth/forgot-password', r => {
+      // Dev only: the API returns the token because there is no email delivery yet.
+      if (r.devToken) {
+        const reset = document.getElementById('reset');
+        reset.elements.email.value = e.target.elements.email.value;
+        reset.elements.token.value = r.devToken;
+      }
+    });
+    document.getElementById('reset').onsubmit = e => submitForm(e, '/api/auth/reset-password');
     document.getElementById('refresh').onclick = load;
     restoreSession().then(load);
   </script>

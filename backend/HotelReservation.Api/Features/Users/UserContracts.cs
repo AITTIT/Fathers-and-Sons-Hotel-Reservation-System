@@ -11,6 +11,21 @@ public record LoginRequest(string Email, string Password);
 
 public record LoginResponse(string Token, DateTime ExpiresAtUtc, UserResponse User);
 
+// Role is optional; only admins may change it.
+public record UpdateUserRequest(
+    string Email,
+    string FirstName,
+    string LastName,
+    string? Phone,
+    string? Role);
+
+// CurrentPassword is required when changing your own password; admins changing someone else's may omit it.
+public record ChangePasswordRequest(string? CurrentPassword, string NewPassword);
+
+public record ForgotPasswordRequest(string Email);
+
+public record ResetPasswordRequest(string Email, string Token, string NewPassword);
+
 public record UserResponse(
     int Id,
     string Email,

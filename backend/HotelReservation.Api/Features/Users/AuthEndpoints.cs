@@ -77,7 +77,78 @@ public static class AuthEndpoints
             var user = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == id, ct);
             return user is null ? Results.Unauthorized() : Results.Ok(UserResponse.From(user));
         }).RequireAuthorization();
+
+        // Always answers the same way so it can't be used to discover which emails exist.
+        // There is no email delivery yet: in Development the token is returned in the response.
+        group.MapPost("/forgot-password", async (ForgotPasswordRequest request, AppDbContext db, IWebHostEnvironment env, CancellationToken ct) =>
+        {
+            const string message = "If the email is registered, a reset token has been issued.";
+            var email = (request.Email ?? string.Empty).Trim().ToLowerInvariant();
+            var user = await db.Users.FirstOrDefaultAsync(u => u.Email == email, ct);
+            if (user is null)
+                return Results.Ok(new { message });
+
+            var now = DateTime.UtcNow;
+            var stale = await db.PasswordResetTokens
+                .Where(t => t.UserId == user.Id && t.UsedAtUtc == null)
+                .ToListAsync(ct);
+            foreach (var t in stale)
+                t.UsedAtUtc = now;
+
+            var rawToken = Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32))
+                .Replace('+', '-').Replace('/', '_').TrimEnd('=');
+            db.PasswordResetTokens.Add(new PasswordResetToken
+            {
+                UserId = user.Id,
+                TokenHash = HashToken(rawToken),
+                CreatedAtUtc = now,
+                ExpiresAtUtc = now.AddMinutes(30)
+            });
+            await db.SaveChangesAsync(ct);
+
+            return env.IsDevelopment()
+                ? Results.Ok(new { message, devToken = rawToken })
+                : Results.Ok(new { message });
+        });
+
+        group.MapPost("/reset-password", async (ResetPasswordRequest request, AppDbContext db, CancellationToken ct) =>
+        {
+            if (PasswordError(request.NewPassword) is { } passwordError)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { [nameof(request.NewPassword)] = [passwordError] });
+
+            const string invalid = "Invalid or expired reset token.";
+            var email = (request.Email ?? string.Empty).Trim().ToLowerInvariant();
+            var hash = HashToken(request.Token ?? string.Empty);
+            var now = DateTime.UtcNow;
+
+            var entry = await db.PasswordResetTokens
+                .Join(db.Users, t => t.UserId, u => u.Id, (t, u) => new { Token = t, User = u })
+                .FirstOrDefaultAsync(x => x.Token.TokenHash == hash && x.User.Email == email, ct);
+
+            if (entry is null || entry.Token.UsedAtUtc is not null || entry.Token.ExpiresAtUtc <= now)
+                return Results.BadRequest(new { error = invalid });
+
+            entry.Token.UsedAtUtc = now;
+            entry.User.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword, workFactor: 11);
+            entry.User.UpdatedAtUtc = now;
+            await db.SaveChangesAsync(ct);
+
+            return Results.Ok(new { message = "Password has been reset." });
+        });
     }
+
+    internal static string? PasswordError(string? password)
+    {
+        if (string.IsNullOrEmpty(password) || password.Length < MinPasswordLength)
+            return $"Password must be at least {MinPasswordLength} characters.";
+        // bcrypt only uses the first 72 bytes
+        if (System.Text.Encoding.UTF8.GetByteCount(password) > 72)
+            return "Password must be at most 72 bytes.";
+        return null;
+    }
+
+    internal static string HashToken(string token) =>
+        Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(token)));
 
     private static Dictionary<string, string[]> Validate(RegisterRequest r)
     {
@@ -85,11 +156,8 @@ public static class AuthEndpoints
 
         if (string.IsNullOrWhiteSpace(r.Email) || !r.Email.Contains('@') || r.Email.Trim().Length > 254)
             errors[nameof(r.Email)] = ["A valid email is required."];
-        if (string.IsNullOrEmpty(r.Password) || r.Password.Length < MinPasswordLength)
-            errors[nameof(r.Password)] = [$"Password must be at least {MinPasswordLength} characters."];
-        // bcrypt only uses the first 72 bytes
-        else if (System.Text.Encoding.UTF8.GetByteCount(r.Password) > 72)
-            errors[nameof(r.Password)] = ["Password must be at most 72 bytes."];
+        if (PasswordError(r.Password) is { } passwordError)
+            errors[nameof(r.Password)] = [passwordError];
         if (string.IsNullOrWhiteSpace(r.FirstName))
             errors[nameof(r.FirstName)] = ["First name is required."];
         if (string.IsNullOrWhiteSpace(r.LastName))
