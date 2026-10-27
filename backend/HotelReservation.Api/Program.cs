@@ -66,9 +66,4 @@ app.MapRoomEndpoints();
 app.MapReservationEndpoints();
 app.MapPaymentEndpoints();
 
-if (app.Environment.IsDevelopment())
-{
-    app.MapDevEndpoints();
-}
-
 app.Run();

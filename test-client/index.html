@@ -89,7 +89,7 @@
   <h3>Response</h3>
   <pre id="result">-</pre>
 
-  <h1>Database tables</h1>
+  <h1>Data (from the API, filtered by your role)</h1>
   <button id="refresh">Refresh</button>
   <div id="tables"></div>
 
@@ -99,19 +99,39 @@
     // Override with ?api=http://host:port
     const API = (new URLSearchParams(location.search).get('api') || 'http://localhost:5047').replace(/\/$/, '');
 
+    async function api(path) {
+      const token = localStorage.getItem(TOKEN_KEY);
+      const res = await fetch(API + path, token ? { headers: { Authorization: 'Bearer ' + token } } : undefined);
+      if (!res.ok) throw new Error(`${path}: ${res.status} ${res.statusText}`);
+      return res.json();
+    }
+
+    // Each table comes from its real endpoint; what the server returns already depends on the caller's role.
+    async function fetchTable(name, path) {
+      const { items, total } = await api(path + (path.includes('?') ? '&' : '?') + 'pageSize=100');
+      const columns = items.length ? Object.keys(items[0]) : [];
+      return { name, total, columns, rows: items.map(i => columns.map(c => i[c])) };
+    }
+
     async function load() {
       const container = document.getElementById('tables');
       container.textContent = 'Loading...';
       try {
-        const token = localStorage.getItem(TOKEN_KEY);
-        const res = await fetch(API + '/api/dev/tables', token ? { headers: { Authorization: 'Bearer ' + token } } : undefined);
-        if (!res.ok) throw new Error(res.status + ' ' + res.statusText);
-        const tables = await res.json();
+        const role = currentUser?.role;
+        const requests = [
+          fetchTable('Hotels', '/api/hotels'),
+          fetchTable('Rooms', '/api/rooms' + (role === 'Staff' || role === 'Admin' ? '?includeInactive=true' : ''))
+        ];
+        if (currentUser) {
+          requests.push(fetchTable('Reservations', '/api/reservations'), fetchTable('Payments', '/api/payments'));
+          if (role === 'Staff' || role === 'Admin') requests.push(fetchTable('Users', '/api/users'));
+        }
+        const tables = await Promise.all(requests);
         updateUserPicker(tables);
         container.replaceChildren();
         for (const t of tables) {
           const h = document.createElement('h2');
-          h.textContent = `${t.name} (${t.rows.length} rows)`;
+          h.textContent = `${t.name} (${t.rows.length}${t.total > t.rows.length ? ' of ' + t.total : ''} rows)`;
           const table = document.createElement('table');
           const head = table.createTHead().insertRow();
           for (const c of t.columns) head.appendChild(Object.assign(document.createElement('th'), { textContent: c }));
@@ -137,7 +157,7 @@
     let currentUser = null;
     let usersById = new Map();
 
-    // Admins get every user from the tables response; others only ever act on themselves.
+    // Admins get every user from GET /api/users; others only ever act on themselves.
     function updateUserPicker(tables) {
       const picker = document.getElementById('userPicker');
       const select = document.getElementById('userSelect');
@@ -151,8 +171,8 @@
       select.replaceChildren();
       for (const r of usersTable.rows) {
         const u = {
-          id: r[col('Id')], email: r[col('Email')], firstName: r[col('FirstName')],
-          lastName: r[col('LastName')], phone: r[col('Phone')], role: r[col('Role')]
+          id: r[col('id')], email: r[col('email')], firstName: r[col('firstName')],
+          lastName: r[col('lastName')], phone: r[col('phone')], role: r[col('role')]
         };
         usersById.set(u.id, u);
         const option = document.createElement('option');

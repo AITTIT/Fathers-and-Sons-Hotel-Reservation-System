@@ -1,6 +1,7 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using HotelReservation.Api.Data;
+using HotelReservation.Api.Features.Common;
 using Microsoft.EntityFrameworkCore;
 
 namespace HotelReservation.Api.Features.Users;
@@ -12,6 +13,29 @@ public static class UserEndpoints
     public static void MapUserEndpoints(this WebApplication app)
     {
         var group = app.MapGroup("/api/users").RequireAuthorization();
+
+        // Staff only see customer accounts; admins see everyone.
+        group.MapGet("/", async (string? role, string? search, int? page, int? pageSize, ClaimsPrincipal caller, AppDbContext db, CancellationToken ct) =>
+        {
+            if (!caller.IsInRole("Staff") && !caller.IsInRole("Admin"))
+                return Results.Forbid();
+            if (role is not null && !Roles.Contains(role))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["role"] = [$"Role must be one of: {string.Join(", ", Roles)}."] });
+
+            var query = db.Users.AsNoTracking().AsQueryable();
+            if (!caller.IsInRole("Admin"))
+                query = query.Where(u => u.Role == "Customer");
+            if (role is not null)
+                query = query.Where(u => u.Role == role);
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var term = search.Trim().ToLower();
+                query = query.Where(u => u.Email.Contains(term) || u.FirstName.ToLower().Contains(term) || u.LastName.ToLower().Contains(term));
+            }
+
+            var result = await query.OrderBy(u => u.Id).Select(u => UserResponse.From(u)).ToPagedAsync(page, pageSize, ct);
+            return Results.Ok(result);
+        });
 
         // Users can edit themselves; admins can edit anyone and are the only ones who can change roles.
         group.MapPut("/{id:int}", async (int id, UpdateUserRequest request, ClaimsPrincipal caller, AppDbContext db, CancellationToken ct) =>

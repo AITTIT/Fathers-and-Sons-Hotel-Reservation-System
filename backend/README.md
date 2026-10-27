@@ -6,7 +6,7 @@ ASP.NET Core (.NET 9) Web API backed by PostgreSQL. The MAUI client talks to thi
 MAUI app  ->  ASP.NET Core API  ->  EF Core / Npgsql  ->  PostgreSQL (Docker)
 ```
 
-> **Status:** early development. The database schema, auth and user management are in place. Hotel, room, reservation and payment endpoints are not built yet (the tables and entities exist). The API itself is not containerized yet; the `Dockerfile` is empty.
+> **Status:** early development. The database schema, auth, user management and the hotel, room, reservation and payment endpoints are in place (payments are simulated, with no real provider). The API itself is not containerized yet; the `Dockerfile` is empty.
 
 ## Prerequisites
 
@@ -36,7 +36,7 @@ backend/
   HotelReservation.Api/
     Program.cs                 service registration, auth, endpoint mapping
     Data/AppDbContext.cs       EF Core context
-    Data/DevEndpoints.cs       development-only table viewer API
+
     Features/<Feature>/        entities, DTOs and endpoints, grouped by feature
     Features/Common/           paging and authorization policies
 ```
@@ -137,6 +137,7 @@ Register body: `{ email, password, firstName, lastName, phone? }`. Passwords mus
 
 | Method | Path | Auth | Description |
 |---|---|---|---|
+| GET | `/api/users` | Staff/Admin | Paged list. Staff see customers only, Admin sees everyone. Filters: `role`, `search` (email or name), `page`, `pageSize` |
 | PUT | `/api/users/{id}` | self or Admin | `{ email, firstName, lastName, phone?, role? }`. Only an Admin can change a role, and not their own |
 | POST | `/api/users/{id}/change-password` | self or Admin | `{ currentPassword?, newPassword }`. `currentPassword` is required unless an Admin is changing someone else's |
 
@@ -196,7 +197,7 @@ The amount is always calculated by the server from the reservation. Payments can
 ### Roles
 
 - **Customer:** manages their own account.
-- **Staff:** reads all hotels, rooms, reservations and payments, and customer accounts (development table viewer for now).
+- **Staff:** reads all hotels, rooms (including inactive), reservations and payments, and customer accounts.
 - **Admin:** full access, including editing any user.
 
 The token carries the user id (`sub`), email and role. Tokens stay valid until they expire, even after a password change.
@@ -214,18 +215,19 @@ Then open http://localhost:5500/. The API base URL defaults to `http://localhost
 It lets you:
 - log in and out, and see who is logged in
 - register, edit profile, change password, request and complete a password reset
-- view the database tables, filtered by the logged-in role
+- view hotels, rooms, reservations, payments and (Staff/Admin) users, as returned by the real endpoints for the logged-in role
+- as an Admin, pick any user from a dropdown to edit their profile or password
 
-The tables are served by `GET /api/dev/tables`, which is also development-only:
+The page only uses the public API (`/api/hotels`, `/api/rooms`, `/api/reservations`, `/api/payments`, `/api/users` and the auth routes), so what it shows is exactly what any other client would get:
 
 | Caller | Sees |
 |---|---|
 | Anonymous | hotels, active rooms |
-| Customer | the above, plus own user row, reservations and payments |
-| Staff | all hotels, rooms, reservations, payments, and customer users (no password hashes) |
-| Admin | everything, including password hashes |
+| Customer | the above, plus own reservations and payments |
+| Staff | all rooms (including inactive), all reservations and payments, and customer users |
+| Admin | everything, including all users |
 
-These dev endpoints are not the real API. Production endpoints must apply the same role and ownership rules themselves.
+It does not yet have forms for creating reservations or payments; use the endpoints directly for now.
 
 ## Calling the API from MAUI
 
