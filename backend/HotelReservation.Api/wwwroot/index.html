@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Hotel Reservation - Dev Page</title>
+  <style>
+    body { font-family: sans-serif; margin: 2rem; }
+    table { border-collapse: collapse; margin-bottom: 2rem; }
+    th, td { border: 1px solid #ccc; padding: 4px 8px; font-size: 14px; max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    th { background: #eee; }
+    .null { color: #999; font-style: italic; }
+    .error { color: #b00; }
+    form { display: grid; gap: 6px; max-width: 320px; margin-bottom: 1rem; }
+    .forms { display: flex; gap: 3rem; flex-wrap: wrap; }
+    pre { background: #f4f4f4; padding: 8px; max-width: 700px; overflow: auto; }
+  </style>
+</head>
+<body>
+  <h1>Auth test</h1>
+  <div class="forms">
+    <form id="login">
+      <h2>Login</h2>
+      <input name="email" type="email" placeholder="Email" value="customer1@hotel.test" required>
+      <input name="password" type="password" placeholder="Password" value="Password123!" required>
+      <button>Login</button>
+    </form>
+    <form id="register">
+      <h2>Register</h2>
+      <input name="email" type="email" placeholder="Email" required>
+      <input name="password" type="password" placeholder="Password (min 8)" required>
+      <input name="firstName" placeholder="First name" required>
+      <input name="lastName" placeholder="Last name" required>
+      <input name="phone" placeholder="Phone (optional)">
+      <button>Register</button>
+    </form>
+  </div>
+  <h3>Response</h3>
+  <pre id="result">-</pre>
+
+  <h1>Database tables</h1>
+  <button id="refresh">Refresh</button>
+  <div id="tables"></div>
+
+  <script>
+    async function load() {
+      const container = document.getElementById('tables');
+      container.textContent = 'Loading...';
+      try {
+        const res = await fetch('/api/dev/tables');
+        if (!res.ok) throw new Error(res.status + ' ' + res.statusText);
+        const tables = await res.json();
+        container.replaceChildren();
+        for (const t of tables) {
+          const h = document.createElement('h2');
+          h.textContent = `${t.name} (${t.rows.length} rows)`;
+          const table = document.createElement('table');
+          const head = table.createTHead().insertRow();
+          for (const c of t.columns) head.appendChild(Object.assign(document.createElement('th'), { textContent: c }));
+          const body = table.createTBody();
+          for (const r of t.rows) {
+            const tr = body.insertRow();
+            for (const v of r) {
+              const td = tr.insertCell();
+              if (v === null) { td.textContent = 'NULL'; td.className = 'null'; }
+              else { td.textContent = v; td.title = v; }
+            }
+          }
+          container.append(h, table);
+        }
+      } catch (e) {
+        const p = document.createElement('p');
+        p.className = 'error';
+        p.textContent = 'Failed to load: ' + e.message;
+        container.replaceChildren(p);
+      }
+    }
+    async function submitForm(e, url, refresh) {
+      e.preventDefault();
+      const body = Object.fromEntries(new FormData(e.target));
+      const out = document.getElementById('result');
+      try {
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        const text = await res.text();
+        let data = text;
+        try { data = JSON.stringify(JSON.parse(text), null, 2); } catch {}
+        out.textContent = `${res.status} ${res.statusText}\n${data}`;
+        if (refresh && res.ok) load();
+      } catch (err) {
+        out.textContent = 'Request failed: ' + err.message;
+      }
+    }
+    document.getElementById('login').onsubmit = e => submitForm(e, '/api/auth/login', false);
+    document.getElementById('register').onsubmit = e => submitForm(e, '/api/auth/register', true);
+    document.getElementById('refresh').onclick = load;
+    load();
+  </script>
+</body>
+</html>
