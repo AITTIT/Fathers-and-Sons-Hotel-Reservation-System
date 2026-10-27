@@ -43,7 +43,15 @@ public static class DatabaseInitializer
         }
 
         await SeedAdminAsync(db, app.Configuration.GetSection(AdminSeedOptions.SectionName).Get<AdminSeedOptions>() ?? new(), logger);
-    }
+
+                if (app.Configuration.GetValue<bool>("Seed:Demo"))
+                {
+                    if (app.Environment.IsDevelopment())
+                        await DemoDataSeeder.SeedDemoDataAsync(db, logger);
+                    else
+                        logger.LogWarning("Seed:Demo is ignored outside the Development environment.");
+                }
+            }
 
     // Only runs while the system has no admin, and never overwrites an existing account.
     private static async Task SeedAdminAsync(AppDbContext db, AdminSeedOptions options, ILogger logger)

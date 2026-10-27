@@ -8,20 +8,42 @@ Client (MAUI / browser)  ->  ASP.NET Core API  ->  EF Core / Npgsql  ->  Postgre
 
 > **Status:** early development. Auth, users, hotels, rooms, reservations and payments (simulated, no real provider) are implemented. The API and database run together in Docker Compose.
 
-## Quick start
+## Quick start (teammates start here)
 
-Requires the [.NET 9 SDK](https://dotnet.microsoft.com/download/dotnet/9.0) and Docker.
+Requires only Docker. (The .NET 9 SDK is needed only to run or debug the API outside Docker.)
 
 ```powershell
 cd backend
-docker compose up -d --build        # PostgreSQL, API (http://localhost:5047) and test page (http://localhost:5500)
+docker compose up -d --build
 ```
 
-Then open http://localhost:5500/ and log in with the default admin (see below). Interactive API docs are at http://localhost:5047/scalar/v1.
+| What | Where |
+|---|---|
+| API | http://localhost:5047 |
+| Interactive API docs | http://localhost:5047/scalar/v1 |
+| OpenAPI document (for client generation) | http://localhost:5047/openapi/v1.json |
+| Test page | http://localhost:5500 |
+| PostgreSQL | `localhost:5432`, db `hotel_reservation`, `postgres`/`postgres` |
 
-On startup the API applies the EF migrations and creates the default admin (see below). `GET /health` is a liveness check. Compose runs the API in Development mode with local-only settings (see `docker-compose.yml`).
+The first start creates the schema, the default admin and some demo data. Log in with any of these:
 
-To debug the API from the IDE instead, start only the database and run the API yourself (stop the `api` container first, since both use port 5047):
+| Account | Password | Role |
+|---|---|---|
+| `default-admin@change.me` | `hoteladmin` | Admin |
+| `demo-staff@change.me` | `hoteldemo` | Staff |
+| `demo-customer1@change.me`, `demo-customer2@change.me` | `hoteldemo` | Customer |
+
+Common tasks:
+
+```powershell
+docker compose logs -f api          # API logs
+docker compose up -d --build api    # after pulling backend changes
+docker compose down -v              # wipe the database; the next start re-creates the admin and demo data
+```
+
+Compose runs the API in Development mode with local-only settings (see `docker-compose.yml`). `GET /health` is a liveness check.
+
+To debug the API from the IDE instead, stop the container (both use port 5047) and run it yourself against the same database:
 
 ```powershell
 docker compose stop api
@@ -65,11 +87,11 @@ docker compose down -v
 docker compose up -d
 ```
 
-Local Postgres: `localhost:5432`, database `testdb`, user/password `postgres`/`postgres`. Development credentials only.
+Local Postgres: `localhost:5432`, database `hotel_reservation`, user/password `postgres`/`postgres`. Development credentials only.
 
 ### Default admin
 
-If no Admin exists at startup, one is created from configuration. Nothing else is seeded; create hotels, rooms, staff and customers through the API.
+If no Admin exists at startup, one is created from configuration.
 
 | Setting (env var) | Purpose |
 |---|---|
@@ -78,6 +100,10 @@ If no Admin exists at startup, one is created from configuration. Nothing else i
 | `Seed:Admin:FirstName`, `Seed:Admin:LastName` | Optional |
 
 Development uses `default-admin@change.me` / `hoteladmin`. Without this config and without an admin, the API logs a warning and starts with no users.
+
+### Demo data
+
+With `Seed:Demo=true` (`Seed__Demo`, on in `docker-compose.yml`), an empty database also gets 3 hotels, 24 rooms (one inactive), the demo staff and customer accounts above, 3 reservations and 2 payments. It runs only in the Development environment and only when there are no hotels yet, in one transaction. Set it to `false` in Compose for an empty system. Demo data is not added to a database that already has hotels; `docker compose down -v` to start clean.
 
 ## Configuration
 
@@ -109,7 +135,7 @@ The API URL defaults to `http://localhost:5047`; override it with `?api=http://h
 ## Not done yet
 
 - A production profile (no dev settings, HTTPS reverse proxy, unpublished Postgres port)
-- Real payment provider and refunds
+- Payment provider and refunds (simulated?)
 - Email delivery for password reset
 - Automated tests
 - Notifications table (optional in the schema doc)
