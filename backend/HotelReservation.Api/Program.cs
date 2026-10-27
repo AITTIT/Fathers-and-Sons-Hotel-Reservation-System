@@ -75,6 +75,8 @@ builder.Services.AddRateLimiter(options =>
     };
 });
 
+builder.Services.AddApiDocumentation();
+
 var app = builder.Build();
 
 app.UseCors();
@@ -82,7 +84,8 @@ app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapGet("/health", () => "Hotel Reservation API");
+app.MapGet("/health", () => "Hotel Reservation API").ExcludeFromDescription();
+app.MapApiDocumentation();
 
 app.MapAuthEndpoints();
 app.MapUserEndpoints();
@@ -90,5 +93,7 @@ app.MapHotelEndpoints();
 app.MapRoomEndpoints();
 app.MapReservationEndpoints();
 app.MapPaymentEndpoints();
+
+await app.InitializeDatabaseAsync();
 
 app.Run();

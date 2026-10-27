@@ -16,7 +16,7 @@ MAUI app  ->  ASP.NET Core API  ->  EF Core / Npgsql  ->  PostgreSQL (Docker)
 ## Quick start
 
 ```powershell
-# 1. Start PostgreSQL (creates and seeds the database on first start)
+# 1. Start PostgreSQL (the API creates the schema and admin on startup)
 cd backend
 docker compose up -d
 
@@ -32,10 +32,11 @@ dotnet run --launch-profile http
 ```
 backend/
   docker-compose.yml           PostgreSQL 17 container
-  db/init/                     SQL run on first database start (schema + seed data)
   HotelReservation.Api/
     Program.cs                 service registration, auth, endpoint mapping
-    Data/AppDbContext.cs       EF Core context
+    Data/AppDbContext.cs       EF Core context and constraints
+    Data/DatabaseInitializer.cs  migrate on startup + admin seed
+    Migrations/                EF Core migrations
 
     Features/<Feature>/        entities, DTOs and endpoints, grouped by feature
     Features/Common/           paging and authorization policies
@@ -53,18 +54,28 @@ PostgreSQL runs in Docker with these settings (defined in `docker-compose.yml`):
 
 These are local development credentials only. Never reuse them anywhere else.
 
-### Schema and seed data
+### Schema and migrations
 
-The schema is created by plain SQL, not EF migrations. Postgres runs every file in `db/init/` in alphabetical order, **only when the data volume is empty**:
+The schema is managed by EF Core migrations (`HotelReservation.Api/Migrations`). The API applies pending migrations on startup (retrying while Postgres is still booting), so an empty database is all it needs. The exclusion constraint, the capacity trigger and the `btree_gist` extension are raw SQL inside the `InitialCreate` migration.
 
-| File | Contents |
+To change the schema, edit the entities or `AppDbContext.OnModelCreating`, then:
+
+```powershell
+cd backend\HotelReservation.Api
+dotnet ef migrations add <Name> --configuration Release
+```
+
+### Admin seed
+
+If no `Admin` user exists at startup, one is created from configuration. Nothing else is seeded.
+
+| Key (env var) | Purpose |
 |---|---|
-| `01-users.sql` | `Users`, 4 test users |
-| `02-hotels.sql` | `Hotels`, 5 hotels |
-| `03-rooms.sql` | `Rooms`, 7 per hotel (35) |
-| `04-reservations.sql` | `Reservations`, 8 sample bookings |
-| `05-payments.sql` | `Payments`, 9 sample payments |
-| `06-password-reset-tokens.sql` | `PasswordResetTokens` (empty) |
+| `Seed:Admin:Email` (`Seed__Admin__Email`) | Admin email |
+| `Seed:Admin:Password` (`Seed__Admin__Password`) | Must meet the normal password rules |
+| `Seed:Admin:FirstName`, `Seed:Admin:LastName` | Optional names |
+
+Development uses `admin@hotel.test` / `Password123!` (in `appsettings.Development.json`). Without this config and without an admin, the API logs a warning and starts with no users. Create hotels, rooms, staff and customers through the API.
 
 The design is documented in [`../Documentation/DatabaseSchema.md`](../Documentation/DatabaseSchema.md).
 
@@ -81,26 +92,13 @@ Rules enforced by the database:
 
 ### Resetting the database
 
-To change the schema or re-seed, wipe the volume and start again. **This deletes all data.**
+To start from scratch, wipe the volume and run the API again (it recreates the schema and admin). **This deletes all data.**
 
 ```powershell
 cd backend
 docker compose down -v
 docker compose up -d
 ```
-
-Reservation dates in the seed are relative to the current date.
-
-### Test users
-
-All use the password `Password123!`.
-
-| Email | Role |
-|---|---|
-| `admin@hotel.test` | Admin |
-| `staff@hotel.test` | Staff |
-| `customer1@hotel.test` | Customer |
-| `customer2@hotel.test` | Customer |
 
 ## Configuration
 
@@ -119,6 +117,10 @@ All use the password `Password123!`.
 The committed `Jwt:Key` is a development placeholder. Outside development, supply real values through environment variables (e.g. `Jwt__Key`, `ConnectionStrings__Default`) or a secret store, never in source control.
 
 ## API
+
+**Interactive docs (Development only):** run the API and open `/scalar/v1` (for example `http://localhost:5047/scalar/v1`). Every endpoint is listed with its access rules, parameters and request/response shapes, and you can try calls from the page. Choose Bearer authentication and paste the token from `/api/auth/login`. The raw OpenAPI document is at `/openapi/v1.json`, which you can feed to a client generator (for example for MAUI). Neither is exposed outside Development.
+
+The summaries and access notes live in [`Features/Common/OpenApiSetup.cs`](HotelReservation.Api/Features/Common/OpenApiSetup.cs). Update them when you add or change an endpoint.
 
 JSON over HTTP. Protected endpoints need `Authorization: Bearer <token>`. Errors use `{ "error": "..." }`, or standard problem details with field errors for validation (400).
 
