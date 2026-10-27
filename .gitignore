@@ -26,5 +26,4 @@ packages/
 *.jks
 *.pfx
 *.mobileprovision
-backend/docker-compose.yml
 backend/HotelReservation.Api/Dockerfile
