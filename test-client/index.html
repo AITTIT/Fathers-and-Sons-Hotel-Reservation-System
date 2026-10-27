@@ -4,154 +4,225 @@
   <meta charset="utf-8">
   <title>Hotel Reservation - Dev Page</title>
   <style>
-    body { font-family: sans-serif; margin: 2rem; }
+    body { font-family: sans-serif; margin: 0 2rem 12rem; }
     table { border-collapse: collapse; margin-bottom: 2rem; }
-    th, td { border: 1px solid #ccc; padding: 4px 8px; font-size: 14px; max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    th, td { border: 1px solid #ccc; padding: 4px 8px; font-size: 14px; max-width: 480px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     th { background: #eee; }
     .null { color: #999; font-style: italic; }
     .error { color: #b00; }
-    form { display: grid; gap: 6px; max-width: 320px; margin-bottom: 1rem; }
-    .forms { display: flex; gap: 3rem; flex-wrap: wrap; }
-    pre { background: #f4f4f4; padding: 8px; max-width: 700px; overflow: auto; }
-    #session { background: #eef; border: 1px solid #99c; padding: 8px 12px; margin-bottom: 1rem; display: flex; gap: 12px; align-items: center; }
+    form { display: grid; gap: 8px; margin-bottom: 1rem; align-content: start; padding: 12px 14px; border: 1px solid #ddd; border-radius: 6px; background: #fafafa; }
+    form h2 { margin-top: 0; }
+    input, select, button { padding: 5px 8px; font-size: 14px; min-width: 0; max-width: 100%; box-sizing: border-box; }
+    form { min-width: 0; }
+    select { width: 100%; }
+    .forms { display: grid; gap: 1.5rem; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); align-items: start; }
+    #loggedIn { display: grid; gap: 0 2rem; grid-template-columns: repeat(auto-fit, minmax(900px, 1fr)); align-items: start; }
+    #userSelect { max-width: 480px; }
+    #tables { overflow-x: auto; }
+    section { scroll-margin-top: 64px; border-top: 2px solid #ddd; margin-top: 1rem; }
+    h2 { margin: 0.8rem 0 0.4rem; font-size: 1.1rem; }
+    h1 { font-size: 1.4rem; }
+    pre { margin: 0; background: #f4f4f4; padding: 8px; max-height: 220px; overflow: auto; font-size: 13px; }
+    #top { position: sticky; top: 0; z-index: 10; background: #fff; border-bottom: 1px solid #ccc; margin: 0 -2rem 1rem; padding: 8px 2rem; }
+    #session { background: #eef; border: 1px solid #99c; padding: 6px 12px; display: flex; gap: 12px; align-items: center; }
     #session.in { background: #efe; border-color: #6a6; }
+    nav { margin-top: 6px; display: flex; gap: 14px; flex-wrap: wrap; font-size: 14px; }
+    #responsePanel { position: fixed; right: 12px; bottom: 12px; width: min(720px, 90vw); background: #fff; border: 1px solid #999; box-shadow: 0 2px 8px #0003; z-index: 10; }
+    #responsePanel summary { cursor: pointer; padding: 4px 8px; background: #eee; }
+    #responsePanel.ok summary { background: #cfc; }
+    #responsePanel.bad summary { background: #fcc; }
+    .hint { color: #666; font-size: 13px; }
   </style>
 </head>
 <body>
-  <div id="session">
-    <span id="who">Not logged in</span>
-    <button id="logout" hidden>Logout</button>
+  <div id="top">
+    <div id="session">
+      <span id="who">Not logged in</span>
+      <button id="logout" hidden>Logout</button>
+    </div>
+    <nav>
+      <a href="#auth">Auth</a>
+      <a href="#hotels" class="needs-login">Hotels &amp; rooms</a>
+      <a href="#reservations" class="needs-login">Reservations</a>
+      <a href="#payments" class="needs-login">Payments</a>
+      <a href="#account" class="needs-login">Account</a>
+      <a href="#data">Data</a>
+    </nav>
   </div>
 
-  <h1>Auth test</h1>
-  <div class="forms">
-    <form id="login">
-      <h2>Login</h2>
-      <input name="email" type="email" placeholder="Email" required>
-      <input name="password" type="password" placeholder="Password" required>
-      <button>Login</button>
-    </form>
-    <form id="register">
-      <h2>Register</h2>
-      <input name="email" type="email" placeholder="Email" required>
-      <input name="password" type="password" placeholder="Password (min 8)" required>
-      <input name="firstName" placeholder="First name" required>
-      <input name="lastName" placeholder="Last name" required>
-      <input name="phone" placeholder="Phone (optional)">
-      <button>Register</button>
-    </form>
-  </div>
-  <div id="accountForms" hidden>
-    <div id="userPicker" hidden>
-      <label>Acting on user (admin):
-        <select id="userSelect"></select>
-      </label>
-    </div>
+  <section id="auth">
+    <h1>Auth</h1>
     <div class="forms">
-    <form id="profile">
-      <h2>Edit profile</h2>
-      <input name="userId" type="hidden">
-      <input name="email" type="email" placeholder="Email" required>
-      <input name="firstName" placeholder="First name" required>
-      <input name="lastName" placeholder="Last name" required>
-      <input name="phone" placeholder="Phone (optional)">
-      <select name="role" title="Admins only">
-        <option value="">Role: unchanged</option>
-        <option>Customer</option>
-        <option>Staff</option>
-        <option>Admin</option>
-      </select>
-      <button>Save</button>
-    </form>
-    <form id="changePassword">
-      <h2>Change password</h2>
-      <input name="userId" type="hidden">
-      <input name="currentPassword" type="password" placeholder="Current password (not needed for admin on others)">
-      <input name="newPassword" type="password" placeholder="New password (min 8)" required>
-      <button>Change password</button>
-    </form>
-    </div>
-  </div>
-  <div id="bookingForms" hidden>
-    <div class="forms">
-      <form id="hotelForm">
-        <h2>Create hotel (Admin)</h2>
-        <input name="name" placeholder="Name" required>
-        <input name="addressLine1" placeholder="Address" required>
-        <input name="city" placeholder="City" required>
-        <input name="country" placeholder="Country" required>
-        <input name="postalCode" placeholder="Postal code (optional)">
-        <button>Create hotel</button>
+      <form id="login">
+        <h2>Login</h2>
+        <input name="email" type="email" placeholder="Email" required>
+        <input name="password" type="password" placeholder="Password" required>
+        <button>Login</button>
       </form>
-      <form id="roomForm">
-        <h2>Create room (Staff/Admin)</h2>
-        <input name="hotelId" type="number" min="1" placeholder="Hotel id" required>
-        <input name="roomNumber" placeholder="Room number" required>
-        <input name="roomType" placeholder="Type (e.g. Double)" required>
-        <input name="capacity" type="number" min="1" placeholder="Capacity" required>
-        <input name="pricePerNight" type="number" min="0" step="0.01" placeholder="Price per night" required>
-        <select name="isActive" data-bool><option value="true">Active</option><option value="false">Inactive</option></select>
-        <button>Create room</button>
+      <form id="register">
+        <h2>Register</h2>
+        <input name="email" type="email" placeholder="Email" required>
+        <input name="password" type="password" placeholder="Password (min 8)" required>
+        <input name="firstName" placeholder="First name" required>
+        <input name="lastName" placeholder="Last name" required>
+        <input name="phone" placeholder="Phone (optional)">
+        <button>Register</button>
+      </form>
+      <form id="forgot">
+        <h2>Forgot password</h2>
+        <input name="email" type="email" placeholder="Email" required>
+        <button>Request reset token</button>
+      </form>
+      <form id="reset">
+        <h2>Reset password</h2>
+        <input name="email" type="email" placeholder="Email" required>
+        <input name="token" placeholder="Reset token (filled in by Forgot password)" required>
+        <input name="newPassword" type="password" placeholder="New password (min 8)" required>
+        <button>Reset password</button>
       </form>
     </div>
-    <div class="forms">
-      <form id="reservationForm">
-        <h2>Create reservation</h2>
-        <input name="roomId" type="number" min="1" placeholder="Room id" required>
-        <label>Check-in <input name="checkInDate" type="date" required></label>
-        <label>Check-out <input name="checkOutDate" type="date" required></label>
-        <input name="guestCount" type="number" min="1" placeholder="Guests" required>
-        <input name="userId" type="number" min="1" placeholder="Book for user id (Staff/Admin, optional)">
-        <button>Create reservation</button>
-      </form>
-      <form id="reservationAction">
-        <h2>Confirm / cancel reservation</h2>
-        <input name="id" type="number" min="1" placeholder="Reservation id" required>
-        <button value="cancel">Cancel</button>
-        <button value="confirm">Confirm (Staff/Admin)</button>
-      </form>
-    </div>
-    <div class="forms">
-      <form id="paymentForm">
-        <h2>Create payment</h2>
-        <input name="reservationId" type="number" min="1" placeholder="Reservation id" required>
-        <input name="provider" placeholder="Provider" value="Card" required>
-        <button>Create payment</button>
-      </form>
-      <form id="paymentComplete">
-        <h2>Complete payment (Staff/Admin)</h2>
-        <input name="id" type="number" min="1" placeholder="Payment id" required>
-        <select name="succeeded" data-bool><option value="true">Succeeded</option><option value="false">Failed</option></select>
-        <input name="providerTransactionId" placeholder="Provider transaction id (optional)">
-        <button>Complete</button>
-      </form>
-      <form id="paymentCancel">
-        <h2>Cancel payment</h2>
-        <input name="id" type="number" min="1" placeholder="Payment id" required>
-        <button>Cancel payment</button>
-      </form>
-    </div>
-  </div>
-  <div class="forms">
-    <form id="forgot">
-      <h2>Forgot password</h2>
-      <input name="email" type="email" placeholder="Email" required>
-      <button>Request reset token</button>
-    </form>
-    <form id="reset">
-      <h2>Reset password</h2>
-      <input name="email" type="email" placeholder="Email" required>
-      <input name="token" placeholder="Reset token" required>
-      <input name="newPassword" type="password" placeholder="New password (min 8)" required>
-      <button>Reset password</button>
-    </form>
-  </div>
-  <h3>Response</h3>
-  <pre id="result">-</pre>
+  </section>
 
-  <h1>Data (from the API, filtered by your role)</h1>
-  <button id="refresh">Refresh</button>
-  <div id="tables"></div>
+  <div id="loggedIn" hidden>
+    <section id="hotels">
+      <h1>Hotels &amp; rooms</h1>
+      <div class="forms">
+        <form id="hotelForm">
+          <h2>Create hotel (Admin)</h2>
+          <input name="name" placeholder="Name" required>
+          <input name="addressLine1" placeholder="Address" required>
+          <input name="city" placeholder="City" required>
+          <input name="country" placeholder="Country" required>
+          <input name="postalCode" placeholder="Postal code (optional)">
+          <button>Create hotel</button>
+        </form>
+        <form id="roomForm">
+          <h2>Create room (Staff/Admin)</h2>
+          <select name="hotelId" data-number data-source="hotels" required></select>
+          <input name="roomNumber" placeholder="Room number" required>
+          <input name="roomType" placeholder="Type (e.g. Double)" required>
+          <input name="capacity" type="number" min="1" placeholder="Capacity" required>
+          <input name="pricePerNight" type="number" min="0" step="0.01" placeholder="Price per night" required>
+          <select name="isActive" data-bool><option value="true">Active</option><option value="false">Inactive</option></select>
+          <button>Create room</button>
+        </form>
+        <form id="roomEdit">
+          <h2>Edit room (Staff/Admin)</h2>
+          <select name="id" data-source="rooms" required></select>
+          <input name="hotelId" type="hidden">
+          <input name="roomNumber" placeholder="Room number" required>
+          <input name="roomType" placeholder="Type (e.g. Double)" required>
+          <input name="capacity" type="number" min="1" placeholder="Capacity" required>
+          <input name="pricePerNight" type="number" min="0" step="0.01" placeholder="Price per night" required>
+          <select name="isActive" data-bool><option value="true">Active</option><option value="false">Inactive</option></select>
+          <button>Save room</button>
+        </form>
+        <form id="roomDelete">
+          <h2>Delete room (Staff/Admin)</h2>
+          <select name="id" data-source="rooms" required></select>
+          <button>Delete room</button>
+        </form>
+        <form id="hotelDelete">
+          <h2>Delete hotel (Admin)</h2>
+          <select name="id" data-source="hotels" required></select>
+          <button>Delete hotel</button>
+        </form>
+      </div>
+    </section>
+
+    <section id="reservations">
+      <h1>Reservations</h1>
+      <div class="forms">
+        <form id="reservationForm">
+          <h2>Create reservation</h2>
+          <select name="roomId" data-number data-source="activeRooms" required></select>
+          <label>Check-in <input name="checkInDate" type="date" required></label>
+          <label>Check-out <input name="checkOutDate" type="date" required></label>
+          <input name="guestCount" type="number" min="1" value="1" placeholder="Guests" required>
+          <select name="userId" data-number data-source="users" data-blank="Book for myself" title="Staff/Admin only"></select>
+          <button>Create reservation</button>
+        </form>
+        <form id="reservationAction">
+          <h2>Confirm / cancel reservation</h2>
+          <select name="id" data-source="reservations" required></select>
+          <button value="cancel">Cancel</button>
+          <button value="confirm">Confirm (Staff/Admin)</button>
+        </form>
+      </div>
+    </section>
+
+    <section id="payments">
+      <h1>Payments</h1>
+      <div class="forms">
+        <form id="paymentForm">
+          <h2>Create payment</h2>
+          <select name="reservationId" data-number data-source="payableReservations" required></select>
+          <select name="provider" required>
+            <option>Visa</option>
+            <option>PayPal</option>
+            <option>MobilePay</option>
+          </select>
+          <button>Create payment</button>
+        </form>
+        <form id="paymentComplete">
+          <h2>Complete payment (Staff/Admin)</h2>
+          <select name="id" data-source="pendingPayments" required></select>
+          <select name="succeeded" data-bool><option value="true">Succeeded</option><option value="false">Failed</option></select>
+          <input name="providerTransactionId" placeholder="Provider transaction id (optional)">
+          <button>Complete</button>
+        </form>
+        <form id="paymentCancel">
+          <h2>Cancel payment</h2>
+          <select name="id" data-source="pendingPayments" required></select>
+          <button>Cancel payment</button>
+        </form>
+      </div>
+    </section>
+
+    <section id="account">
+      <h1>Account</h1>
+      <div id="userPicker" hidden>
+        <label>Acting on user (admin):
+          <select id="userSelect"></select>
+        </label>
+      </div>
+      <div class="forms">
+        <form id="profile">
+          <h2>Edit profile</h2>
+          <input name="userId" type="hidden">
+          <input name="email" type="email" placeholder="Email" required>
+          <input name="firstName" placeholder="First name" required>
+          <input name="lastName" placeholder="Last name" required>
+          <input name="phone" placeholder="Phone (optional)">
+          <select name="role" title="Admins only">
+            <option value="">Role: unchanged</option>
+            <option>Customer</option>
+            <option>Staff</option>
+            <option>Admin</option>
+          </select>
+          <button>Save</button>
+        </form>
+        <form id="changePassword">
+          <h2>Change password</h2>
+          <input name="userId" type="hidden">
+          <input name="currentPassword" type="password" placeholder="Current password (not needed for admin on others)">
+          <input name="newPassword" type="password" placeholder="New password (min 8)" required>
+          <button>Change password</button>
+        </form>
+      </div>
+    </section>
+  </div>
+
+  <section id="data">
+    <h1>Data (from the API, filtered by your role)</h1>
+    <button id="refresh">Refresh</button>
+    <div id="tables"></div>
+  </section>
+
+  <details id="responsePanel" open>
+    <summary>Response: <span id="status">-</span></summary>
+    <pre id="result">-</pre>
+  </details>
 
   <script>
     const TOKEN_KEY = 'authToken';
@@ -170,8 +241,56 @@
     async function fetchTable(name, path) {
       const { items, total } = await api(path + (path.includes('?') ? '&' : '?') + 'pageSize=100');
       const columns = items.length ? Object.keys(items[0]) : [];
-      return { name, total, columns, rows: items.map(i => columns.map(c => i[c])) };
+      return { name, total, columns, items, rows: items.map(i => columns.map(c => i[c])) };
     }
+
+    // Dropdown sources: what each data-source select lists, built from the loaded tables.
+    const money = n => Number(n).toFixed(2);
+    const sources = {
+      hotels: { list: d => d.hotels, label: (h) => `${h.name} (${h.city})` },
+      rooms: { list: d => d.rooms, label: (r, d) => `${hotelName(d, r.hotelId)} - room ${r.roomNumber}, ${r.roomType}${r.isActive ? '' : ' [inactive]'}` },
+      activeRooms: { list: d => d.rooms.filter(r => r.isActive), label: (r, d) => `${hotelName(d, r.hotelId)} - room ${r.roomNumber}, ${r.roomType}, up to ${r.capacity}, ${money(r.pricePerNight)}/night` },
+      users: { list: d => d.users, label: u => `${u.firstName} ${u.lastName} <${u.email}> [${u.role}]` },
+      reservations: { list: d => d.reservations, label: reservationLabel },
+      payableReservations: { list: d => d.reservations.filter(r => r.status === 'Pending' && !d.payments.some(p => p.reservationId === r.id && p.status === 'Pending')), label: reservationLabel },
+      pendingPayments: { list: d => d.payments.filter(p => p.status === 'Pending'), label: p => `Payment #${p.id} - reservation #${p.reservationId}, ${p.provider}, ${money(p.amount)} ${p.currency}` }
+    };
+    const hotelName = (d, id) => d.hotels.find(h => h.id === id)?.name ?? `hotel ${id}`;
+    function reservationLabel(r, d) {
+      const room = d.rooms.find(x => x.id === r.roomId);
+      return `#${r.id} - ${hotelName(d, r.hotelId)}, room ${room?.roomNumber ?? r.roomId}, ${r.checkInDate} to ${r.checkOutDate} [${r.status}]`;
+    }
+
+    function fillSelects(data) {
+      for (const select of document.querySelectorAll('select[data-source]')) {
+        const source = sources[select.dataset.source];
+        const previous = select.value;
+        const items = source.list(data);
+        const options = [];
+        const blank = select.dataset.blank;
+        // Optional pickers always keep a "default" entry; required ones show a hint when empty.
+        if (blank !== undefined) options.push(new Option(blank, ''));
+        else if (!items.length) options.push(new Option('(nothing to pick yet)', ''));
+        for (const item of items) options.push(new Option(source.label(item, data), item.id));
+        select.replaceChildren(...options);
+        if ([...select.options].some(o => o.value === previous)) select.value = previous;
+        // The optional user picker only makes sense for staff and admins.
+        if (blank !== undefined) select.hidden = !items.length;
+      }
+      lastData = data;
+      fillRoomEdit();
+    }
+
+    // The edit form starts from the selected room's current values.
+    let lastData = null;
+    function fillRoomEdit() {
+      const form = document.getElementById('roomEdit');
+      const room = lastData?.rooms.find(r => String(r.id) === form.elements.id.value);
+      if (!room) return;
+      for (const k of ['hotelId', 'roomNumber', 'roomType', 'capacity', 'pricePerNight']) form.elements[k].value = room[k];
+      form.elements.isActive.value = String(room.isActive);
+    }
+    document.getElementById('roomEdit').elements.id.onchange = fillRoomEdit;
 
     async function load() {
       const container = document.getElementById('tables');
@@ -187,6 +306,11 @@
           if (role === 'Staff' || role === 'Admin') requests.push(fetchTable('Users', '/api/users'));
         }
         const tables = await Promise.all(requests);
+        const itemsOf = name => tables.find(t => t.name === name)?.items ?? [];
+        fillSelects({
+          hotels: itemsOf('Hotels'), rooms: itemsOf('Rooms'), reservations: itemsOf('Reservations'),
+          payments: itemsOf('Payments'), users: itemsOf('Users')
+        });
         updateUserPicker(tables);
         container.replaceChildren();
         for (const t of tables) {
@@ -258,8 +382,8 @@
 
     function showUser(user) {
       currentUser = user;
-      document.getElementById('accountForms').hidden = !user;
-      document.getElementById('bookingForms').hidden = !user;
+      document.getElementById('loggedIn').hidden = !user;
+      for (const a of document.querySelectorAll('nav .needs-login')) a.hidden = !user;
       // Reset the picker so a new login starts on its own account.
       document.getElementById('userSelect').replaceChildren();
       if (user) fillAccountForms(user);
@@ -293,25 +417,32 @@
       // The API expects real numbers and booleans, not strings.
       for (const el of e.target.elements) {
         if (!(el.name in body)) continue;
-        if (el.type === 'number') body[el.name] = Number(body[el.name]);
+        if (el.type === 'number' || 'number' in el.dataset) body[el.name] = Number(body[el.name]);
         else if ('bool' in el.dataset) body[el.name] = body[el.name] === 'true';
       }
       // Fields that only select a resource go in the URL, not the body.
       for (const k of e.target.dataset.urlFields?.split(',') ?? []) delete body[k];
       const out = document.getElementById('result');
+      const panel = document.getElementById('responsePanel');
       const headers = { 'Content-Type': 'application/json' };
       const token = localStorage.getItem(TOKEN_KEY);
       if (auth && token) headers.Authorization = 'Bearer ' + token;
+      const show = (ok, status, text) => {
+        panel.className = ok ? 'ok' : 'bad';
+        panel.open = true;
+        document.getElementById('status').textContent = status;
+        out.textContent = text;
+      };
       try {
-        const res = await fetch(API + url, { method, headers, body: JSON.stringify(body) });
+        const res = await fetch(API + url, { method, headers, body: method === 'DELETE' ? undefined : JSON.stringify(body) });
         const text = await res.text();
         let data = text;
         let parsed = null;
         try { parsed = JSON.parse(text); data = JSON.stringify(parsed, null, 2); } catch {}
-        out.textContent = `${res.status} ${res.statusText}\n${data}`;
+        show(res.ok, `${res.status} ${res.statusText} - ${method} ${url}`, data);
         if (res.ok && onSuccess) onSuccess(parsed);
       } catch (err) {
-        out.textContent = 'Request failed: ' + err.message;
+        show(false, 'Request failed', err.message);
       }
     }
     document.getElementById('login').onsubmit = e => submitForm(e, '/api/auth/login', r => {
@@ -344,6 +475,20 @@
     const created = () => load();
     document.getElementById('hotelForm').onsubmit = e => submitForm(e, '/api/hotels', created, { auth: true });
     document.getElementById('roomForm').onsubmit = e => submitForm(e, '/api/rooms', created, { auth: true });
+    document.getElementById('roomEdit').onsubmit = e => {
+      e.target.dataset.urlFields = 'id';
+      return submitForm(e, `/api/rooms/${e.target.elements.id.value}`, created, { method: 'PUT', auth: true });
+    };
+    document.getElementById('roomDelete').onsubmit = e => {
+      const id = e.target.elements.id.value;
+      if (!confirm(`Delete room #${id}?`)) return e.preventDefault();
+      return submitForm(e, `/api/rooms/${id}`, created, { method: 'DELETE', auth: true });
+    };
+    document.getElementById('hotelDelete').onsubmit = e => {
+      const id = e.target.elements.id.value;
+      if (!confirm(`Delete hotel #${id} and all of its rooms?`)) return e.preventDefault();
+      return submitForm(e, `/api/hotels/${id}`, created, { method: 'DELETE', auth: true });
+    };
     document.getElementById('reservationForm').onsubmit = e => submitForm(e, '/api/reservations', created, { auth: true });
     document.getElementById('reservationAction').onsubmit = e => {
       e.target.dataset.urlFields = 'id';

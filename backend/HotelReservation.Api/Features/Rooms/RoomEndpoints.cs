@@ -92,19 +92,20 @@ public static class RoomEndpoints
             if (room is null)
                 return Results.NotFound();
 
+            if (await db.Reservations.AnyAsync(r => r.RoomId == id && r.Status != "Cancelled", ct))
+                return Results.Conflict(new { error = "Room has active reservations. Cancel them first, or deactivate the room instead." });
+
+            // Cancelled reservations (and their payments) are removed together with the room.
+            await using var tx = await db.Database.BeginTransactionAsync(ct);
+            await db.Payments.Where(p => db.Reservations.Any(r => r.Id == p.ReservationId && r.RoomId == id)).ExecuteDeleteAsync(ct);
+            await db.Reservations.Where(r => r.RoomId == id).ExecuteDeleteAsync(ct);
             db.Rooms.Remove(room);
-            try
-            {
-                await db.SaveChangesAsync(ct);
-            }
-            catch (DbUpdateException)
-            {
-                return Results.Conflict(new { error = "Room has reservations and cannot be deleted. Deactivate it instead." });
-            }
+            await db.SaveChangesAsync(ct);
+            await tx.CommitAsync(ct);
             return Results.NoContent();
-        }).RequireAuthorization(Policies.Admin)
+        }).RequireAuthorization(Policies.StaffOrAdmin)
         .WithSummary("Delete a room")
-        .WithDescription("Requires Admin. 409 if it has reservations; deactivate it instead.");
+        .WithDescription("Requires Staff or Admin. 409 if it has Pending or Confirmed reservations. Cancelled reservations and their payments are deleted with it.");
     }
 
     private static bool IsStaff(HttpContext http) => http.User.IsInRole("Staff") || http.User.IsInRole("Admin");

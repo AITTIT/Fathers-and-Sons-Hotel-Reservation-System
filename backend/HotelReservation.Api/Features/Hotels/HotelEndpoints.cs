@@ -74,19 +74,20 @@ public static class HotelEndpoints
             if (hotel is null)
                 return Results.NotFound();
 
+            if (await db.Reservations.AnyAsync(r => r.HotelId == id && r.Status != "Cancelled", ct))
+                return Results.Conflict(new { error = "Hotel has active reservations. Cancel them first." });
+
+            // Cancelled reservations (and their payments) are removed together with the hotel.
+            await using var tx = await db.Database.BeginTransactionAsync(ct);
+            await db.Payments.Where(p => db.Reservations.Any(r => r.Id == p.ReservationId && r.HotelId == id)).ExecuteDeleteAsync(ct);
+            await db.Reservations.Where(r => r.HotelId == id).ExecuteDeleteAsync(ct);
             db.Hotels.Remove(hotel);
-            try
-            {
-                await db.SaveChangesAsync(ct);
-            }
-            catch (DbUpdateException)
-            {
-                return Results.Conflict(new { error = "Hotel has rooms with reservations and cannot be deleted." });
-            }
+            await db.SaveChangesAsync(ct);
+            await tx.CommitAsync(ct);
             return Results.NoContent();
         }).RequireAuthorization(Policies.Admin)
         .WithSummary("Delete a hotel")
-        .WithDescription("Requires Admin. Also deletes its rooms. 409 if any room has reservations.");
+        .WithDescription("Requires Admin. Also deletes its rooms. 409 if any reservation is Pending or Confirmed. Cancelled reservations and their payments are deleted with it.");
     }
 
     private static HotelResponse ToResponse(Hotel h) => new(h.Id, h.Name, h.AddressLine1, h.City, h.Country, h.PostalCode);
