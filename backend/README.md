@@ -1,98 +1,56 @@
 # Hotel Reservation Backend
 
-ASP.NET Core (.NET 9) Web API backed by PostgreSQL. The MAUI client talks to this API over HTTP; all persistence and business logic live here.
+ASP.NET Core (.NET 9) Web API backed by PostgreSQL. It is client-agnostic: the MAUI app and browsers use the same HTTP API.
 
 ```
-MAUI app  ->  ASP.NET Core API  ->  EF Core / Npgsql  ->  PostgreSQL (Docker)
+Client (MAUI / browser)  ->  ASP.NET Core API  ->  EF Core / Npgsql  ->  PostgreSQL (Docker)
 ```
 
-> **Status:** early development. The database schema, auth, user management and the hotel, room, reservation and payment endpoints are in place (payments are simulated, with no real provider). The API itself is not containerized yet; the `Dockerfile` is empty.
-
-## Prerequisites
-
-- [.NET 9 SDK](https://dotnet.microsoft.com/download/dotnet/9.0)
-- [Docker](https://www.docker.com/) with Compose
+> **Status:** early development. Auth, users, hotels, rooms, reservations and payments (simulated, no real provider) are implemented. The API is not containerized yet; the `Dockerfile` is empty.
 
 ## Quick start
 
+Requires the [.NET 9 SDK](https://dotnet.microsoft.com/download/dotnet/9.0) and Docker.
+
 ```powershell
-# 1. Start PostgreSQL (the API creates the schema and admin on startup)
 cd backend
-docker compose up -d
+docker compose up -d                              # PostgreSQL
 
-# 2. Run the API
 cd HotelReservation.Api
-dotnet run --launch-profile http
+dotnet run --launch-profile http                  # http://localhost:5047
 ```
 
-`GET /health` returns a plain-text liveness message. For the development test page, see below.
+On startup the API applies the EF migrations and creates the default admin (see below). `GET /health` is a liveness check.
 
-## Layout
+## API documentation
 
-```
-backend/
-  docker-compose.yml           PostgreSQL 17 container
-  HotelReservation.Api/
-    Program.cs                 service registration, auth, endpoint mapping
-    Data/AppDbContext.cs       EF Core context and constraints
-    Data/DatabaseInitializer.cs  migrate on startup + admin seed
-    Migrations/                EF Core migrations
+In Development, the API serves its own documentation:
 
-    Features/<Feature>/        entities, DTOs and endpoints, grouped by feature
-    Features/Common/           paging and authorization policies
-```
+- **Interactive docs:** `http://localhost:5047/scalar/v1`. Every endpoint, its access rules, parameters and request/response shapes. Log in via `/api/auth/login` and paste the token under Bearer authentication to try protected calls.
+- **OpenAPI document:** `http://localhost:5047/openapi/v1.json`. Use it to generate a client (for example for MAUI).
+
+Neither is exposed outside Development. The summaries and access notes are in [`OpenApiSetup.cs`](HotelReservation.Api/Features/Common/OpenApiSetup.cs); update them when you change an endpoint.
+
+General conventions:
+
+- JSON over HTTP, `camelCase`. Protected endpoints need `Authorization: Bearer <token>`.
+- List endpoints return `{ items, total, page, pageSize }` (default page size 25, max 100).
+- Errors are `{ "error": "..." }`, or a validation problem document (400).
+- Roles: **Customer** (own account, reservations and payments; other people's are 404), **Staff** (read access to everything operational, manage rooms and reservations), **Admin** (everything, including users and hotels).
+- Tokens last 60 minutes and stay valid after a password change.
+- Password reset has no email delivery yet. In Development `forgot-password` returns the token as `devToken`; elsewhere it is never returned.
+- Payments are simulated: staff "complete" a payment to stand in for a provider callback. There are no refunds, and reservations are cancelled, never deleted.
 
 ## Database
 
-PostgreSQL runs in Docker with these settings (defined in `docker-compose.yml`):
-
-| Setting | Value |
-|---|---|
-| Host / port | `localhost:5432` |
-| Database | `testdb` |
-| User / password | `postgres` / `postgres` |
-
-These are local development credentials only. Never reuse them anywhere else.
-
-### Schema and migrations
-
-The schema is managed by EF Core migrations (`HotelReservation.Api/Migrations`). The API applies pending migrations on startup (retrying while Postgres is still booting), so an empty database is all it needs. The exclusion constraint, the capacity trigger and the `btree_gist` extension are raw SQL inside the `InitialCreate` migration.
-
-To change the schema, edit the entities or `AppDbContext.OnModelCreating`, then:
+Schema changes are EF Core migrations ([`Migrations/`](HotelReservation.Api/Migrations)), applied automatically at startup. The overlap exclusion constraint, capacity trigger and `btree_gist` extension are raw SQL inside `InitialCreate`. The design is in [`../Documentation/DatabaseSchema.md`](../Documentation/DatabaseSchema.md).
 
 ```powershell
 cd backend\HotelReservation.Api
-dotnet ef migrations add <Name> --configuration Release
+dotnet ef migrations add <Name> --configuration Release    # after changing entities or AppDbContext
 ```
 
-### Admin seed
-
-If no `Admin` user exists at startup, one is created from configuration. Nothing else is seeded.
-
-| Key (env var) | Purpose |
-|---|---|
-| `Seed:Admin:Email` (`Seed__Admin__Email`) | Admin email |
-| `Seed:Admin:Password` (`Seed__Admin__Password`) | Must meet the normal password rules |
-| `Seed:Admin:FirstName`, `Seed:Admin:LastName` | Optional names |
-
-Development uses `admin@hotel.test` / `Password123!` (in `appsettings.Development.json`). Without this config and without an admin, the API logs a warning and starts with no users. Create hotels, rooms, staff and customers through the API.
-
-The design is documented in [`../Documentation/DatabaseSchema.md`](../Documentation/DatabaseSchema.md).
-
-Relationships: Hotel 1-N Rooms, User 1-N Reservations, Room 1-N Reservations, Reservation 1-N Payments. A reservation also stores `HotelId`, and a composite foreign key guarantees it matches the room's hotel.
-
-Rules enforced by the database:
-
-- `Users.Email` is unique; `Role` is `Customer`, `Staff` or `Admin`.
-- `(HotelId, RoomNumber)` is unique per room.
-- `CheckInDate < CheckOutDate`.
-- Active (`Pending`/`Confirmed`) reservations cannot overlap on the same room. The check-out day is free for the next check-in, and `Cancelled` bookings don't block.
-- `GuestCount > 0` and cannot exceed the room's capacity (trigger).
-- Money values are `>= 0`. A payment has `PaidAtUtc` exactly when its status is `Succeeded`.
-
-### Resetting the database
-
-To start from scratch, wipe the volume and run the API again (it recreates the schema and admin). **This deletes all data.**
+Reset the database (**deletes all data**):
 
 ```powershell
 cd backend
@@ -100,278 +58,51 @@ docker compose down -v
 docker compose up -d
 ```
 
+Local Postgres: `localhost:5432`, database `testdb`, user/password `postgres`/`postgres`. Development credentials only.
+
+### Default admin
+
+If no Admin exists at startup, one is created from configuration. Nothing else is seeded; create hotels, rooms, staff and customers through the API.
+
+| Setting (env var) | Purpose |
+|---|---|
+| `Seed:Admin:Email` (`Seed__Admin__Email`) | Admin email |
+| `Seed:Admin:Password` (`Seed__Admin__Password`) | Must meet the password rules (8 characters to 72 bytes) |
+| `Seed:Admin:FirstName`, `Seed:Admin:LastName` | Optional |
+
+Development uses `default-admin@change.me` / `hoteladmin`. Without this config and without an admin, the API logs a warning and starts with no users.
+
 ## Configuration
 
-`appsettings.Development.json` provides the local defaults:
+`appsettings.Development.json` holds the local defaults. Outside Development, supply values through environment variables or a secret store, never source control.
 
 | Key | Purpose |
 |---|---|
 | `ConnectionStrings:Default` | Npgsql connection string |
-| `Jwt:Key` | HMAC signing key. **Required, at least 32 characters**; the API refuses to start without it |
+| `Jwt:Key` | Signing key. **Required, at least 32 characters** |
 | `Jwt:Issuer`, `Jwt:Audience`, `Jwt:ExpiryMinutes` | Optional; default `HotelReservation.Api`, `HotelReservation.Client`, `60` |
-| `Cors:AllowedOrigins` | Array of browser origins allowed to call the API (e.g. `http://localhost:5500`). Empty means no cross-origin browser access. MAUI is unaffected |
-| `RateLimiting:AuthPermitLimit`, `RateLimiting:AuthWindowSeconds` | Max requests per client IP per window on the credential endpoints; defaults `10` per `60` seconds |
-
-**Rate limiting:** register, login, forgot-password, reset-password and change-password share one per-IP limit. Over the limit they return 429 with a `Retry-After` header. Behind a reverse proxy, configure forwarded headers so the limiter sees the real client IP.
-
-The committed `Jwt:Key` is a development placeholder. Outside development, supply real values through environment variables (e.g. `Jwt__Key`, `ConnectionStrings__Default`) or a secret store, never in source control.
-
-## API
-
-**Interactive docs (Development only):** run the API and open `/scalar/v1` (for example `http://localhost:5047/scalar/v1`). Every endpoint is listed with its access rules, parameters and request/response shapes, and you can try calls from the page. Choose Bearer authentication and paste the token from `/api/auth/login`. The raw OpenAPI document is at `/openapi/v1.json`, which you can feed to a client generator (for example for MAUI). Neither is exposed outside Development.
-
-The summaries and access notes live in [`Features/Common/OpenApiSetup.cs`](HotelReservation.Api/Features/Common/OpenApiSetup.cs). Update them when you add or change an endpoint.
-
-JSON over HTTP. Protected endpoints need `Authorization: Bearer <token>`. Errors use `{ "error": "..." }`, or standard problem details with field errors for validation (400).
-
-### Auth
-
-| Method | Path | Auth | Description |
-|---|---|---|---|
-| POST | `/api/auth/register` | none | Create a `Customer` account. 201, 400 (validation), 409 (email taken) |
-| POST | `/api/auth/login` | none | Returns `{ token, expiresAtUtc, user }`. 401 for any bad credentials |
-| GET | `/api/auth/me` | token | Current user |
-| POST | `/api/auth/forgot-password` | none | Always 200 with the same message. See the note below |
-| POST | `/api/auth/reset-password` | none | `{ email, token, newPassword }`. Tokens expire after 30 minutes and work once |
-
-Register body: `{ email, password, firstName, lastName, phone? }`. Passwords must be 8 characters to 72 bytes. Emails are stored lower-cased.
-
-**Password reset delivery:** there is no email sending yet. In the Development environment, `forgot-password` returns the token as `devToken` in the response. In any other environment it is never returned, so an email service must be added before real use.
-
-### Users
-
-| Method | Path | Auth | Description |
-|---|---|---|---|
-| GET | `/api/users` | Staff/Admin | Paged list. Staff see customers only, Admin sees everyone. Filters: `role`, `search` (email or name), `page`, `pageSize` |
-| PUT | `/api/users/{id}` | self or Admin | `{ email, firstName, lastName, phone?, role? }`. Only an Admin can change a role, and not their own |
-| POST | `/api/users/{id}/change-password` | self or Admin | `{ currentPassword?, newPassword }`. `currentPassword` is required unless an Admin is changing someone else's |
-
-Access errors return 403; unknown users return 404.
-
-### Hotels
-
-| Method | Path | Auth | Description |
-|---|---|---|---|
-| GET | `/api/hotels` | none | Paged list. Filters: `city`, `country`, `page`, `pageSize` |
-| GET | `/api/hotels/{id}` | none | One hotel. 404 if unknown |
-| POST | `/api/hotels` | Admin | `{ name, addressLine1, city, country, postalCode? }`. 201 |
-| PUT | `/api/hotels/{id}` | Admin | Same body. 200 |
-| DELETE | `/api/hotels/{id}` | Admin | 204, or 409 if its rooms have reservations |
-
-### Rooms
-
-| Method | Path | Auth | Description |
-|---|---|---|---|
-| GET | `/api/rooms` | none | Paged list of active rooms. Filters: `hotelId`, `roomType`, `minCapacity`, `maxPrice`, `page`, `pageSize`. `includeInactive=true` only takes effect for Staff/Admin |
-| GET | `/api/rooms/{id}` | none | One room. Inactive rooms are 404 unless Staff/Admin |
-| POST | `/api/rooms` | Staff/Admin | `{ hotelId, roomNumber, roomType, capacity, pricePerNight, isActive? }`. 201, 409 if the number exists in that hotel |
-| PUT | `/api/rooms/{id}` | Staff/Admin | Same body. The hotel cannot be changed |
-| DELETE | `/api/rooms/{id}` | Admin | 204, or 409 if it has reservations (deactivate it instead) |
-
-List endpoints return `{ items, total, page, pageSize }`. `pageSize` defaults to 25 and is capped at 100.
-
-### Reservations
-
-All routes need a token. Customers only see and manage their own reservations; another user's reservation is reported as 404. Staff and Admin can see and manage all.
-
-| Method | Path | Auth | Description |
-|---|---|---|---|
-| GET | `/api/reservations` | token | Paged list. Filters: `userId` (Staff/Admin only), `hotelId`, `roomId`, `status`, `from`, `to` (dates, overlap with `[from, to)`), `page`, `pageSize` |
-| GET | `/api/reservations/{id}` | owner or Staff/Admin | One reservation |
-| POST | `/api/reservations` | token | `{ roomId, checkInDate, checkOutDate, guestCount, userId? }`. Created as `Pending`. `userId` is only honoured for Staff/Admin booking for a customer. 201, 400, 409 (room already booked) |
-| PUT | `/api/reservations/{id}` | owner or Staff/Admin | `{ checkInDate, checkOutDate, guestCount }`. 409 if cancelled, or already started (customers) |
-| POST | `/api/reservations/{id}/confirm` | Staff/Admin | `Pending` to `Confirmed` |
-| POST | `/api/reservations/{id}/cancel` | owner or Staff/Admin | Sets `Cancelled`, which frees the room. Customers cannot cancel a stay that has started |
-
-Dates are `yyyy-MM-dd`. The server sets `hotelId` from the room and calculates `totalPrice` (nights × room price). Check-out day is free for the next check-in. There is no delete; cancel instead.
-
-### Payments
-
-All routes need a token. Customers only see and manage payments for their own reservations (others are 404). There is no real payment provider yet: payments are recorded and moved through their states by the API.
-
-| Method | Path | Auth | Description |
-|---|---|---|---|
-| GET | `/api/payments` | token | Paged list. Filters: `reservationId`, `status`, `page`, `pageSize` |
-| GET | `/api/payments/{id}` | owner or Staff/Admin | One payment |
-| POST | `/api/payments` | owner or Staff/Admin | `{ reservationId, provider }` with provider `Visa`, `PayPal` or `MobilePay`. Creates a `Pending` payment for the amount still owed, in EUR. 409 if the reservation is cancelled, already paid, or already has a pending payment |
-| POST | `/api/payments/{id}/complete` | Staff/Admin | `{ succeeded, providerTransactionId? }`. Marks a pending payment `Succeeded` (and confirms a pending reservation) or `Failed`. Stands in for a provider callback |
-| POST | `/api/payments/{id}/cancel` | owner or Staff/Admin | Pending payment becomes `Failed` |
-
-The amount is always calculated by the server from the reservation. Payments cannot be deleted, and refunds are not modelled: cancelling a paid reservation leaves its payment untouched.
-
-### Roles
-
-- **Customer:** manages their own account.
-- **Staff:** reads all hotels, rooms (including inactive), reservations and payments, and customer accounts.
-- **Admin:** full access, including editing any user.
-
-The token carries the user id (`sub`), email and role. Tokens stay valid until they expire, even after a password change.
+| `Cors:AllowedOrigins` | Browser origins allowed to call the API. Empty means no cross-origin access. MAUI is unaffected |
+| `RateLimiting:AuthPermitLimit`, `RateLimiting:AuthWindowSeconds` | Per-IP limit on register, login, forgot/reset/change-password; default `10` per `60` s, then 429 with `Retry-After`. Behind a reverse proxy, configure forwarded headers so the real client IP is used |
 
 ## Development test page
 
-The page lives outside the API project, in [test-client/index.html](../test-client/index.html), and talks to the API over HTTP like any real client. Serve it from any static server on an origin listed in `Cors:AllowedOrigins`:
+[`test-client/index.html`](../test-client/index.html) lives outside the API project and calls it over HTTP like a real client. It has forms for the auth, user, hotel, room, reservation and payment endpoints, plus tables of what the logged-in role can see. Serve it from an origin listed in `Cors:AllowedOrigins`:
 
 ```powershell
 python -m http.server 5500 --directory ..\test-client
 ```
 
-Then open http://localhost:5500/. The API base URL defaults to `http://localhost:5047`; override it with `?api=http://host:port`.
-
-It lets you:
-- log in and out, and see who is logged in
-- register, edit profile, change password, request and complete a password reset
-- view hotels, rooms, reservations, payments and (Staff/Admin) users, as returned by the real endpoints for the logged-in role
-- as an Admin, pick any user from a dropdown to edit their profile or password
-
-The page only uses the public API (`/api/hotels`, `/api/rooms`, `/api/reservations`, `/api/payments`, `/api/users` and the auth routes), so what it shows is exactly what any other client would get:
-
-| Caller | Sees |
-|---|---|
-| Anonymous | hotels, active rooms |
-| Customer | the above, plus own reservations and payments |
-| Staff | all rooms (including inactive), all reservations and payments, and customer users |
-| Admin | everything, including all users |
-
-It does not yet have forms for creating reservations or payments; use the endpoints directly for now.
-
-## Calling the API from MAUI
-
-An untested sketch of how the MAUI client could consume the auth endpoints, following the project's MVVM split: a service abstraction, a typed `HttpClient`, and a ViewModel that only knows the abstraction. It assumes the `CommunityToolkit.Mvvm` package. DTOs should live in the shared contracts project, and the JSON property names are camelCase.
-
-**Contracts** (mirror the API responses):
-
-```csharp
-public record LoginRequest(string Email, string Password);
-public record UserDto(int Id, string Email, string FirstName, string LastName,
-                      string? Phone, string Role, DateTime CreatedAtUtc, DateTime UpdatedAtUtc);
-public record LoginResponse(string Token, DateTime ExpiresAtUtc, UserDto User);
-```
-
-**Service abstraction and implementation:**
-
-```csharp
-public interface IAuthService
-{
-    Task<UserDto?> LoginAsync(string email, string password, CancellationToken ct = default);
-    Task<UserDto?> GetCurrentUserAsync(CancellationToken ct = default);
-    void Logout();
-}
-
-public class AuthService(HttpClient http) : IAuthService
-{
-    private const string TokenKey = "authToken";
-
-    public async Task<UserDto?> LoginAsync(string email, string password, CancellationToken ct = default)
-    {
-        var response = await http.PostAsJsonAsync("api/auth/login", new LoginRequest(email, password), ct);
-        if (response.StatusCode == HttpStatusCode.Unauthorized)
-            return null; // wrong email or password
-
-        response.EnsureSuccessStatusCode();
-        var login = (await response.Content.ReadFromJsonAsync<LoginResponse>(ct))!;
-        await SecureStorage.Default.SetAsync(TokenKey, login.Token);
-        return login.User;
-    }
-
-    public async Task<UserDto?> GetCurrentUserAsync(CancellationToken ct = default)
-    {
-        // The auth handler below adds the Bearer header.
-        var response = await http.GetAsync("api/auth/me", ct);
-        if (response.StatusCode == HttpStatusCode.Unauthorized)
-        {
-            Logout(); // expired or invalid token
-            return null;
-        }
-
-        response.EnsureSuccessStatusCode();
-        return await response.Content.ReadFromJsonAsync<UserDto>(ct);
-    }
-
-    public void Logout() => SecureStorage.Default.Remove(TokenKey);
-}
-```
-
-**Attach the token to every request:**
-
-```csharp
-public class AuthHeaderHandler : DelegatingHandler
-{
-    protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
-    {
-        var token = await SecureStorage.Default.GetAsync("authToken");
-        if (!string.IsNullOrEmpty(token))
-            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        return await base.SendAsync(request, ct);
-    }
-}
-```
-
-**Registration** in `MauiProgram.cs`:
-
-```csharp
-builder.Services.AddTransient<AuthHeaderHandler>();
-builder.Services.AddHttpClient<IAuthService, AuthService>(c => c.BaseAddress = new Uri("http://localhost:5047/"))
-                .AddHttpMessageHandler<AuthHeaderHandler>();
-builder.Services.AddTransient<LoginViewModel>();
-builder.Services.AddTransient<LoginPage>();
-```
-
-**ViewModel:**
-
-```csharp
-public partial class LoginViewModel(IAuthService auth) : ObservableObject
-{
-    [ObservableProperty] private string email = string.Empty;
-    [ObservableProperty] private string password = string.Empty;
-    [ObservableProperty] private string? error;
-    [ObservableProperty] private UserDto? currentUser;
-
-    [RelayCommand]
-    private async Task LoginAsync()
-    {
-        Error = null;
-        try
-        {
-            CurrentUser = await auth.LoginAsync(Email, Password);
-            if (CurrentUser is null)
-                Error = "Invalid email or password.";
-        }
-        catch (HttpRequestException)
-        {
-            Error = "Could not reach the server.";
-        }
-    }
-}
-```
-
-**View** (`LoginPage.xaml`, with `x:DataType="vm:LoginViewModel"`):
-
-```xml
-<VerticalStackLayout Padding="20" Spacing="10">
-    <Entry Placeholder="Email" Keyboard="Email" Text="{Binding Email}" />
-    <Entry Placeholder="Password" IsPassword="True" Text="{Binding Password}" />
-    <Button Text="Log in" Command="{Binding LoginCommand}" />
-    <Label Text="{Binding Error}" TextColor="Red" />
-    <Label Text="{Binding CurrentUser.FirstName, StringFormat='Logged in as {0}'}" />
-</VerticalStackLayout>
-```
-
-Notes for real use:
-
-- **Plain HTTP is for local development only.** The target architecture uses HTTPS, which needs the .NET dev certificate trusted (`dotnet dev-certs https --trust`) and the `https` launch profile (`https://localhost:7170`).
-- **Call `GetCurrentUserAsync()` at startup** to restore the session from the stored token. Tokens last 60 minutes, so handle a 401 anywhere by sending the user back to the login page.
-- Other endpoints follow the same pattern. For example, an edit is `PutAsJsonAsync($"api/users/{id}", body)`, and 403 means the caller isn't allowed.
+Open http://localhost:5500/. The API URL defaults to `http://localhost:5047`; override it with `?api=http://host:port`.
 
 ## Tips
 
-- If `dotnet build` fails copying `HotelReservation.Api.exe`, a previous instance of the API is still running and locking the file. Stop it first.
-- The API listens on `http://localhost:5047` (and `https://localhost:7170` with the `https` profile).
+- If `dotnet build` fails copying `HotelReservation.Api.exe`, a running API instance is locking it. Stop it first.
+- The `https` launch profile listens on `https://localhost:7170` (trust the dev certificate with `dotnet dev-certs https --trust`).
 
 ## Not done yet
 
-- Real payment provider integration and refunds (payment endpoints exist but are simulated)
-- CORS policy for browser clients on other origins, and an OpenAPI document
-- Containerizing the API (Dockerfile, adding it to Compose)
+- Containerizing the API (Dockerfile, Compose service)
+- Real payment provider and refunds
 - Email delivery for password reset
 - Automated tests
 - Notifications table (optional in the schema doc)
