@@ -67,7 +67,8 @@ public static class DevEndpoints
                     new("Users", "SELECT * FROM \"Users\" ORDER BY \"Id\" LIMIT 200"),
                     new("Hotels", "SELECT * FROM \"Hotels\" ORDER BY \"Id\" LIMIT 200"),
                     new("Rooms", "SELECT * FROM \"Rooms\" ORDER BY \"Id\" LIMIT 200"),
-                    new("Reservations", "SELECT * FROM \"Reservations\" ORDER BY \"Id\" LIMIT 200")
+                    new("Reservations", "SELECT * FROM \"Reservations\" ORDER BY \"Id\" LIMIT 200"),
+                    new("Payments", "SELECT * FROM \"Payments\" ORDER BY \"Id\" LIMIT 200")
                 ];
 
             case "Staff":
@@ -78,7 +79,8 @@ public static class DevEndpoints
                         NeedsUserId: true),
                     new("Hotels", "SELECT * FROM \"Hotels\" ORDER BY \"Id\" LIMIT 200"),
                     new("Rooms", "SELECT * FROM \"Rooms\" ORDER BY \"Id\" LIMIT 200"),
-                    new("Reservations", "SELECT * FROM \"Reservations\" ORDER BY \"Id\" LIMIT 200")
+                    new("Reservations", "SELECT * FROM \"Reservations\" ORDER BY \"Id\" LIMIT 200"),
+                    new("Payments", "SELECT * FROM \"Payments\" ORDER BY \"Id\" LIMIT 200")
                 ];
 
             default:
@@ -97,6 +99,9 @@ public static class DevEndpoints
                 {
                     queries.Add(new("Reservations",
                         "SELECT * FROM \"Reservations\" WHERE \"UserId\" = @userId ORDER BY \"Id\" LIMIT 200",
+                        NeedsUserId: true));
+                    queries.Add(new("Payments",
+                        "SELECT p.* FROM \"Payments\" p JOIN \"Reservations\" r ON r.\"Id\" = p.\"ReservationId\" WHERE r.\"UserId\" = @userId ORDER BY p.\"Id\" LIMIT 200",
                         NeedsUserId: true));
                 }
 
