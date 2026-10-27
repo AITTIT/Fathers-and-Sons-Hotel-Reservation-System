@@ -2,18 +2,13 @@
 
 ASP.NET Core (.NET 9) Web API backed by PostgreSQL. It is client-agnostic: the MAUI app and browsers use the same HTTP API.
 
-```
-Client (MAUI / browser)  ->  ASP.NET Core API  ->  EF Core / Npgsql  ->  PostgreSQL (Docker)
-```
+> **Status:** early development. Auth, users, hotels, rooms, reservations are implemented. The API and database run together in Docker Compose.
 
-> **Status:** early development. Auth, users, hotels, rooms, reservations and payments (simulated, no real provider) are implemented. The API and database run together in Docker Compose.
-
-## Quick start (teammates start here)
+## Quick start
 
 Requires only Docker. (The .NET 9 SDK is needed only to run or debug the API outside Docker.)
 
 ```powershell
-cd backend
 docker compose up -d --build
 ```
 
