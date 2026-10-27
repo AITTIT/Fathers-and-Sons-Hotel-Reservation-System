@@ -164,6 +164,21 @@ Access errors return 403; unknown users return 404.
 
 List endpoints return `{ items, total, page, pageSize }`. `pageSize` defaults to 25 and is capped at 100.
 
+### Reservations
+
+All routes need a token. Customers only see and manage their own reservations; another user's reservation is reported as 404. Staff and Admin can see and manage all.
+
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| GET | `/api/reservations` | token | Paged list. Filters: `userId` (Staff/Admin only), `hotelId`, `roomId`, `status`, `from`, `to` (dates, overlap with `[from, to)`), `page`, `pageSize` |
+| GET | `/api/reservations/{id}` | owner or Staff/Admin | One reservation |
+| POST | `/api/reservations` | token | `{ roomId, checkInDate, checkOutDate, guestCount, userId? }`. Created as `Pending`. `userId` is only honoured for Staff/Admin booking for a customer. 201, 400, 409 (room already booked) |
+| PUT | `/api/reservations/{id}` | owner or Staff/Admin | `{ checkInDate, checkOutDate, guestCount }`. 409 if cancelled, or already started (customers) |
+| POST | `/api/reservations/{id}/confirm` | Staff/Admin | `Pending` to `Confirmed` |
+| POST | `/api/reservations/{id}/cancel` | owner or Staff/Admin | Sets `Cancelled`, which frees the room. Customers cannot cancel a stay that has started |
+
+Dates are `yyyy-MM-dd`. The server sets `hotelId` from the room and calculates `totalPrice` (nights × room price). Check-out day is free for the next check-in. There is no delete; cancel instead.
+
 ### Roles
 
 - **Customer:** manages their own account.
@@ -333,7 +348,7 @@ Notes for real use:
 
 ## Not done yet
 
-- Reservation and payment endpoints (hotels and rooms are done)
+- Payment endpoints (hotels, rooms and reservations are done)
 - CORS policy for browser clients on other origins, and an OpenAPI document
 - Containerizing the API (Dockerfile, adding it to Compose)
 - Email delivery for password reset

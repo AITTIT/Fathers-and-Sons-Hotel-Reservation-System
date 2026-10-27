@@ -3,6 +3,7 @@ using System.Security.Claims;
 using HotelReservation.Api.Data;
 using HotelReservation.Api.Features.Common;
 using HotelReservation.Api.Features.Hotels;
+using HotelReservation.Api.Features.Reservations;
 using HotelReservation.Api.Features.Rooms;
 using HotelReservation.Api.Features.Users;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -61,6 +62,7 @@ app.MapAuthEndpoints();
 app.MapUserEndpoints();
 app.MapHotelEndpoints();
 app.MapRoomEndpoints();
+app.MapReservationEndpoints();
 
 if (app.Environment.IsDevelopment())
 {
