@@ -1,4 +1,5 @@
 using HotelReservation.Api.Features.Hotels;
+using HotelReservation.Api.Features.Reservations;
 using HotelReservation.Api.Features.Rooms;
 using HotelReservation.Api.Features.Users;
 using Microsoft.EntityFrameworkCore;
@@ -17,4 +18,6 @@ public class AppDbContext : DbContext
     public DbSet<Hotel> Hotels => Set<Hotel>();
 
     public DbSet<Room> Rooms => Set<Room>();
+
+    public DbSet<Reservation> Reservations => Set<Reservation>();
 }

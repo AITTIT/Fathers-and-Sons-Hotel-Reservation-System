@@ -7,7 +7,8 @@ CREATE TABLE "Rooms" (
     "PricePerNight" NUMERIC(10, 2) NOT NULL CHECK ("PricePerNight" >= 0),
     "IsActive"      BOOLEAN NOT NULL DEFAULT TRUE,
     "CreatedAtUtc"  TIMESTAMPTZ NOT NULL,
-    "UpdatedAtUtc"  TIMESTAMPTZ NOT NULL
+    "UpdatedAtUtc"  TIMESTAMPTZ NOT NULL,
+    CONSTRAINT "UQ_Rooms_Id_HotelId" UNIQUE ("Id", "HotelId")
 );
 
 CREATE UNIQUE INDEX "IX_Rooms_HotelId_RoomNumber" ON "Rooms" ("HotelId", "RoomNumber");
