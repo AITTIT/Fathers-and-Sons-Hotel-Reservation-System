@@ -41,10 +41,16 @@
       <button>Register</button>
     </form>
   </div>
-  <div class="forms" id="accountForms" hidden>
+  <div id="accountForms" hidden>
+    <div id="userPicker" hidden>
+      <label>Acting on user (admin):
+        <select id="userSelect"></select>
+      </label>
+    </div>
+    <div class="forms">
     <form id="profile">
       <h2>Edit profile</h2>
-      <input name="userId" type="number" placeholder="User id" title="Only admins can edit other users" required>
+      <input name="userId" type="hidden">
       <input name="email" type="email" placeholder="Email" required>
       <input name="firstName" placeholder="First name" required>
       <input name="lastName" placeholder="Last name" required>
@@ -59,11 +65,12 @@
     </form>
     <form id="changePassword">
       <h2>Change password</h2>
-      <input name="userId" type="number" placeholder="User id" required>
+      <input name="userId" type="hidden">
       <input name="currentPassword" type="password" placeholder="Current password (not needed for admin on others)">
       <input name="newPassword" type="password" placeholder="New password (min 8)" required>
       <button>Change password</button>
     </form>
+    </div>
   </div>
   <div class="forms">
     <form id="forgot">
@@ -97,6 +104,7 @@
         const res = await fetch('/api/dev/tables', token ? { headers: { Authorization: 'Bearer ' + token } } : undefined);
         if (!res.ok) throw new Error(res.status + ' ' + res.statusText);
         const tables = await res.json();
+        updateUserPicker(tables);
         container.replaceChildren();
         for (const t of tables) {
           const h = document.createElement('h2');
@@ -124,6 +132,38 @@
     }
 
     let currentUser = null;
+    let usersById = new Map();
+
+    // Admins get every user from the tables response; others only ever act on themselves.
+    function updateUserPicker(tables) {
+      const picker = document.getElementById('userPicker');
+      const select = document.getElementById('userSelect');
+      const usersTable = tables.find(t => t.name === 'Users');
+      picker.hidden = !(currentUser?.role === 'Admin' && usersTable);
+      usersById = new Map();
+      if (picker.hidden) return;
+
+      const col = name => usersTable.columns.indexOf(name);
+      const previous = select.value;
+      select.replaceChildren();
+      for (const r of usersTable.rows) {
+        const u = {
+          id: r[col('Id')], email: r[col('Email')], firstName: r[col('FirstName')],
+          lastName: r[col('LastName')], phone: r[col('Phone')], role: r[col('Role')]
+        };
+        usersById.set(u.id, u);
+        const option = document.createElement('option');
+        option.value = u.id;
+        option.textContent = `${u.firstName} ${u.lastName} <${u.email}> [${u.role}]` + (u.id === currentUser.id ? ' (you)' : '');
+        select.append(option);
+      }
+      select.value = usersById.has(Number(previous)) ? previous : String(currentUser.id);
+    }
+
+    document.getElementById('userSelect').onchange = e => {
+      const user = usersById.get(Number(e.target.value));
+      if (user) fillAccountForms(user);
+    };
 
     function fillAccountForms(user) {
       const profile = document.getElementById('profile');
@@ -136,6 +176,8 @@
     function showUser(user) {
       currentUser = user;
       document.getElementById('accountForms').hidden = !user;
+      // Reset the picker so a new login starts on its own account.
+      document.getElementById('userSelect').replaceChildren();
       if (user) fillAccountForms(user);
       const who = document.getElementById('who');
       document.getElementById('session').classList.toggle('in', !!user);
