@@ -42,15 +42,19 @@ public static class PaymentEndpoints
             var result = await query.OrderByDescending(p => p.CreatedAtUtc).ThenByDescending(p => p.Id)
                 .Select(p => ToResponse(p)).ToPagedAsync(page, pageSize, ct);
             return Results.Ok(result);
-        });
+        })
+        .WithSummary("List payments")
+        .WithDescription("Requires login. Customers only see payments for their own reservations. Filters: `reservationId`, `status`. Paged.");
 
         group.MapGet("/{id:int}", async (int id, ClaimsPrincipal caller, AppDbContext db, CancellationToken ct) =>
         {
             var payment = await db.Payments.AsNoTracking().FirstOrDefaultAsync(p => p.Id == id, ct);
             return payment is null || !await CanAccess(caller, payment, db, ct) ? Results.NotFound() : Results.Ok(ToResponse(payment));
-        });
+                    })
+                    .WithSummary("Get a payment")
+                    .WithDescription("Requires login. Customers get 404 for other people's payments.");
 
-        // Starts a payment for whatever is still owed on the reservation. Amount is always computed server-side.
+                    // Starts a payment for whatever is still owed on the reservation. Amount is always computed server-side.
         group.MapPost("/", async (CreatePaymentRequest request, ClaimsPrincipal caller, AppDbContext db, CancellationToken ct) =>
         {
             var reservation = await db.Reservations.AsNoTracking().FirstOrDefaultAsync(r => r.Id == request.ReservationId, ct);
@@ -80,7 +84,9 @@ public static class PaymentEndpoints
             db.Payments.Add(payment);
             await db.SaveChangesAsync(ct);
             return Results.Created($"/api/payments/{payment.Id}", ToResponse(payment));
-        });
+        })
+        .WithSummary("Start a payment for a reservation")
+        .WithDescription("Requires login (owner or Staff/Admin). The amount is the amount still owed, in EUR, and is set by the server.");
 
         // A successful payment confirms a pending reservation.
         group.MapPost("/{id:int}/complete", async (int id, CompletePaymentRequest request, AppDbContext db, CancellationToken ct) =>
@@ -109,7 +115,9 @@ public static class PaymentEndpoints
             }
             await db.SaveChangesAsync(ct);
             return Results.Ok(ToResponse(payment));
-        }).RequireAuthorization(Policies.StaffOrAdmin);
+        }).RequireAuthorization(Policies.StaffOrAdmin)
+        .WithSummary("Mark a payment succeeded or failed")
+        .WithDescription("Requires Staff or Admin. Simulates the payment provider's callback. Success confirms a pending reservation.");
 
         group.MapPost("/{id:int}/cancel", async (int id, ClaimsPrincipal caller, AppDbContext db, CancellationToken ct) =>
         {
@@ -122,7 +130,9 @@ public static class PaymentEndpoints
             payment.Status = "Failed";
             await db.SaveChangesAsync(ct);
             return Results.Ok(ToResponse(payment));
-        });
+        })
+        .WithSummary("Cancel a pending payment")
+        .WithDescription("Requires login (owner or Staff/Admin).");
     }
 
     private static bool IsStaff(ClaimsPrincipal u) => u.IsInRole("Staff") || u.IsInRole("Admin");

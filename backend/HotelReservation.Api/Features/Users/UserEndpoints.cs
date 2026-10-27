@@ -12,7 +12,7 @@ public static class UserEndpoints
 
     public static void MapUserEndpoints(this WebApplication app)
     {
-        var group = app.MapGroup("/api/users").RequireAuthorization();
+        var group = app.MapGroup("/api/users").WithTags("Users").RequireAuthorization();
 
         // Staff only see customer accounts; admins see everyone.
         group.MapGet("/", async (string? role, string? search, int? page, int? pageSize, ClaimsPrincipal caller, AppDbContext db, CancellationToken ct) =>
@@ -35,7 +35,9 @@ public static class UserEndpoints
 
             var result = await query.OrderBy(u => u.Id).Select(u => UserResponse.From(u)).ToPagedAsync(page, pageSize, ct);
             return Results.Ok(result);
-        });
+        })
+        .WithSummary("List users")
+        .WithDescription("Requires Staff or Admin. Staff see customers only, Admin sees everyone. Filters: `role`, `search`. Paged.");
 
         // Users can edit themselves; admins can edit anyone and are the only ones who can change roles.
         group.MapPut("/{id:int}", async (int id, UpdateUserRequest request, ClaimsPrincipal caller, AppDbContext db, CancellationToken ct) =>
@@ -89,7 +91,9 @@ public static class UserEndpoints
             }
 
             return Results.Ok(UserResponse.From(user));
-        });
+        })
+        .WithSummary("Update a user's profile")
+        .WithDescription("Requires login. You can edit yourself; Admin can edit anyone. Only an Admin can change `role`, and not their own.");
 
         group.MapPost("/{id:int}/change-password", async (int id, ChangePasswordRequest request, ClaimsPrincipal caller, AppDbContext db, CancellationToken ct) =>
         {
@@ -117,7 +121,9 @@ public static class UserEndpoints
             await db.SaveChangesAsync(ct);
 
             return Results.Ok(new { message = "Password changed." });
-        }).RequireRateLimiting(Policies.AuthRateLimit);
+        }).RequireRateLimiting(Policies.AuthRateLimit)
+        .WithSummary("Change a password")
+        .WithDescription("Requires login. Yourself: `currentPassword` required. Admin changing another user: not required. Rate limited per IP.");
     }
 
     private static int? CallerId(ClaimsPrincipal caller) =>

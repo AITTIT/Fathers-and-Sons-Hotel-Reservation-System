@@ -45,13 +45,17 @@ public static class ReservationEndpoints
             var result = await query.OrderByDescending(r => r.CheckInDate).ThenBy(r => r.Id)
                 .Select(r => ToResponse(r)).ToPagedAsync(page, pageSize, ct);
             return Results.Ok(result);
-        });
+        })
+        .WithSummary("List reservations")
+        .WithDescription("Requires login. Customers only see their own; Staff/Admin see all. Filters: `userId`, `hotelId`, `roomId`, `status`, `from`, `to`. Paged.");
 
         group.MapGet("/{id:int}", async (int id, ClaimsPrincipal caller, AppDbContext db, CancellationToken ct) =>
         {
             var r = await db.Reservations.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, ct);
             return r is null || !CanAccess(caller, r) ? Results.NotFound() : Results.Ok(ToResponse(r));
-        });
+        })
+        .WithSummary("Get a reservation")
+        .WithDescription("Requires login. Customers get 404 for other people's reservations.");
 
         group.MapPost("/", async (CreateReservationRequest request, ClaimsPrincipal caller, AppDbContext db, CancellationToken ct) =>
         {
@@ -83,7 +87,9 @@ public static class ReservationEndpoints
             };
             db.Reservations.Add(reservation);
             return await Save(db, ct, () => Results.Created($"/api/reservations/{reservation.Id}", ToResponse(reservation)));
-        });
+        })
+        .WithSummary("Create a reservation")
+        .WithDescription("Requires login. Starts as Pending. The server sets the hotel and the total price. Staff/Admin may pass `userId` to book for someone else. 409 if the room is already booked for those dates (the check-out day is free); 400 if `guestCount` exceeds capacity.");
 
         // Dates and guest count only; to change room, cancel and book again.
         group.MapPut("/{id:int}", async (int id, UpdateReservationRequest request, ClaimsPrincipal caller, AppDbContext db, CancellationToken ct) =>
@@ -108,7 +114,9 @@ public static class ReservationEndpoints
             reservation.TotalPrice = Price(room.PricePerNight, request.CheckInDate, request.CheckOutDate);
             reservation.UpdatedAtUtc = DateTime.UtcNow;
             return await Save(db, ct, () => Results.Ok(ToResponse(reservation)));
-        });
+        })
+        .WithSummary("Change dates or guest count")
+        .WithDescription("Requires login (owner or Staff/Admin). Re-checks overlap and capacity and recalculates the price.");
 
         group.MapPost("/{id:int}/confirm", async (int id, AppDbContext db, CancellationToken ct) =>
         {
@@ -122,7 +130,9 @@ public static class ReservationEndpoints
             reservation.UpdatedAtUtc = DateTime.UtcNow;
             await db.SaveChangesAsync(ct);
             return Results.Ok(ToResponse(reservation));
-        }).RequireAuthorization(Policies.StaffOrAdmin);
+        }).RequireAuthorization(Policies.StaffOrAdmin)
+        .WithSummary("Confirm a pending reservation")
+        .WithDescription("Requires Staff or Admin.");
 
         group.MapPost("/{id:int}/cancel", async (int id, ClaimsPrincipal caller, AppDbContext db, CancellationToken ct) =>
         {
@@ -138,7 +148,9 @@ public static class ReservationEndpoints
             reservation.UpdatedAtUtc = DateTime.UtcNow;
             await db.SaveChangesAsync(ct);
             return Results.Ok(ToResponse(reservation));
-        });
+        })
+        .WithSummary("Cancel a reservation")
+        .WithDescription("Requires login (owner or Staff/Admin). Cancelled bookings free the room.");
     }
 
     private static DateOnly Today() => DateOnly.FromDateTime(DateTime.UtcNow);

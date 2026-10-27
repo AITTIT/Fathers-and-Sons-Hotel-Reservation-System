@@ -53,7 +53,7 @@ In Development, the API serves its own documentation:
 - **Interactive docs:** `http://localhost:5047/scalar/v1`. Every endpoint, its access rules, parameters and request/response shapes. Log in via `/api/auth/login` and paste the token under Bearer authentication to try protected calls.
 - **OpenAPI document:** `http://localhost:5047/openapi/v1.json`. Use it to generate a client (for example for MAUI).
 
-Neither is exposed outside Development. The summaries and access notes are in [`OpenApiSetup.cs`](HotelReservation.Api/Features/Common/OpenApiSetup.cs); update them when you change an endpoint.
+Neither is exposed outside Development. Summaries and access notes are `.WithSummary`/`.WithDescription` calls on each endpoint; update them when you change an endpoint.
 
 General conventions:
 

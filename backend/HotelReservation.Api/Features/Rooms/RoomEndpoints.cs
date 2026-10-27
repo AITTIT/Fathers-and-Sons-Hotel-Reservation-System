@@ -29,7 +29,9 @@ public static class RoomEndpoints
             var result = await query.OrderBy(r => r.HotelId).ThenBy(r => r.RoomNumber)
                 .Select(r => ToResponse(r)).ToPagedAsync(page, pageSize, ct);
             return Results.Ok(result);
-        });
+        })
+        .WithSummary("List rooms")
+        .WithDescription("Public. Filters: `hotelId`, `roomType`, `minCapacity`, `maxPrice`. Inactive rooms are only returned to Staff/Admin with `includeInactive=true`. Paged.");
 
         group.MapGet("/{id:int}", async (int id, HttpContext http, AppDbContext db, CancellationToken ct) =>
         {
@@ -37,7 +39,9 @@ public static class RoomEndpoints
             var room = await db.Rooms.AsNoTracking().Where(r => r.Id == id && (r.IsActive || staff))
                 .Select(r => ToResponse(r)).FirstOrDefaultAsync(ct);
             return room is null ? Results.NotFound() : Results.Ok(room);
-        });
+        })
+        .WithSummary("Get a room")
+        .WithDescription("Public. Inactive rooms are hidden from non-staff (404).");
 
         group.MapPost("/", async (RoomRequest request, AppDbContext db, CancellationToken ct) =>
         {
@@ -54,7 +58,9 @@ public static class RoomEndpoints
             db.Rooms.Add(room);
             await db.SaveChangesAsync(ct);
             return Results.Created($"/api/rooms/{room.Id}", ToResponse(room));
-        }).RequireAuthorization(Policies.StaffOrAdmin);
+        }).RequireAuthorization(Policies.StaffOrAdmin)
+        .WithSummary("Create a room")
+        .WithDescription("Requires Staff or Admin. `roomNumber` must be unique within the hotel.");
 
         // A room cannot move between hotels, because existing reservations reference (RoomId, HotelId).
         group.MapPut("/{id:int}", async (int id, RoomRequest request, AppDbContext db, CancellationToken ct) =>
@@ -76,7 +82,9 @@ public static class RoomEndpoints
             room.UpdatedAtUtc = DateTime.UtcNow;
             await db.SaveChangesAsync(ct);
             return Results.Ok(ToResponse(room));
-        }).RequireAuthorization(Policies.StaffOrAdmin);
+        }).RequireAuthorization(Policies.StaffOrAdmin)
+        .WithSummary("Update a room")
+        .WithDescription("Requires Staff or Admin. A room cannot be moved to another hotel.");
 
         group.MapDelete("/{id:int}", async (int id, AppDbContext db, CancellationToken ct) =>
         {
@@ -94,7 +102,9 @@ public static class RoomEndpoints
                 return Results.Conflict(new { error = "Room has reservations and cannot be deleted. Deactivate it instead." });
             }
             return Results.NoContent();
-        }).RequireAuthorization(Policies.Admin);
+        }).RequireAuthorization(Policies.Admin)
+        .WithSummary("Delete a room")
+        .WithDescription("Requires Admin. 409 if it has reservations; deactivate it instead.");
     }
 
     private static bool IsStaff(HttpContext http) => http.User.IsInRole("Staff") || http.User.IsInRole("Admin");

@@ -24,13 +24,17 @@ public static class HotelEndpoints
 
             var result = await query.OrderBy(h => h.Id).Select(h => ToResponse(h)).ToPagedAsync(page, pageSize, ct);
             return Results.Ok(result);
-        });
+        })
+        .WithSummary("List hotels")
+        .WithDescription("Public. Filters: `city`, `country`. Paged.");
 
         group.MapGet("/{id:int}", async (int id, AppDbContext db, CancellationToken ct) =>
         {
             var hotel = await db.Hotels.AsNoTracking().Where(h => h.Id == id).Select(h => ToResponse(h)).FirstOrDefaultAsync(ct);
             return hotel is null ? Results.NotFound() : Results.Ok(hotel);
-        });
+        })
+        .WithSummary("Get a hotel")
+        .WithDescription("Public.");
 
         group.MapPost("/", async (HotelRequest request, AppDbContext db, CancellationToken ct) =>
         {
@@ -43,7 +47,9 @@ public static class HotelEndpoints
             db.Hotels.Add(hotel);
             await db.SaveChangesAsync(ct);
             return Results.Created($"/api/hotels/{hotel.Id}", ToResponse(hotel));
-        }).RequireAuthorization(Policies.Admin);
+        }).RequireAuthorization(Policies.Admin)
+        .WithSummary("Create a hotel")
+        .WithDescription("Requires Admin.");
 
         group.MapPut("/{id:int}", async (int id, HotelRequest request, AppDbContext db, CancellationToken ct) =>
         {
@@ -58,7 +64,9 @@ public static class HotelEndpoints
             hotel.UpdatedAtUtc = DateTime.UtcNow;
             await db.SaveChangesAsync(ct);
             return Results.Ok(ToResponse(hotel));
-        }).RequireAuthorization(Policies.Admin);
+        }).RequireAuthorization(Policies.Admin)
+        .WithSummary("Update a hotel")
+        .WithDescription("Requires Admin.");
 
         group.MapDelete("/{id:int}", async (int id, AppDbContext db, CancellationToken ct) =>
         {
@@ -76,7 +84,9 @@ public static class HotelEndpoints
                 return Results.Conflict(new { error = "Hotel has rooms with reservations and cannot be deleted." });
             }
             return Results.NoContent();
-        }).RequireAuthorization(Policies.Admin);
+        }).RequireAuthorization(Policies.Admin)
+        .WithSummary("Delete a hotel")
+        .WithDescription("Requires Admin. Also deletes its rooms. 409 if any room has reservations.");
     }
 
     private static HotelResponse ToResponse(Hotel h) => new(h.Id, h.Name, h.AddressLine1, h.City, h.Country, h.PostalCode);

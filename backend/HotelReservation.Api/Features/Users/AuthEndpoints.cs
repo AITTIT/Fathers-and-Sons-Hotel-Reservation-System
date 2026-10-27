@@ -15,7 +15,7 @@ public static class AuthEndpoints
 
     public static void MapAuthEndpoints(this WebApplication app)
     {
-        var group = app.MapGroup("/api/auth");
+        var group = app.MapGroup("/api/auth").WithTags("Auth");
 
         group.MapPost("/register", async (RegisterRequest request, AppDbContext db, CancellationToken ct) =>
         {
@@ -52,7 +52,9 @@ public static class AuthEndpoints
             }
 
             return Results.Created($"/api/users/{user.Id}", UserResponse.From(user));
-        }).RequireRateLimiting(Policies.AuthRateLimit);
+        }).RequireRateLimiting(Policies.AuthRateLimit)
+        .WithSummary("Register a customer account")
+        .WithDescription("Public. Always creates a Customer. 409 if the email is taken. Rate limited per IP.");
 
         group.MapPost("/login", async (LoginRequest request, AppDbContext db, TokenService tokens, CancellationToken ct) =>
         {
@@ -68,7 +70,9 @@ public static class AuthEndpoints
 
             var (token, expires) = tokens.Create(user);
             return Results.Ok(new LoginResponse(token, expires, UserResponse.From(user)));
-        }).RequireRateLimiting(Policies.AuthRateLimit);
+        }).RequireRateLimiting(Policies.AuthRateLimit)
+        .WithSummary("Log in and get a JWT")
+        .WithDescription("Public. Send the returned token as `Authorization: Bearer <token>`. Rate limited per IP.");
 
         group.MapGet("/me", async (ClaimsPrincipal principal, AppDbContext db, CancellationToken ct) =>
         {
@@ -77,7 +81,9 @@ public static class AuthEndpoints
 
             var user = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == id, ct);
             return user is null ? Results.Unauthorized() : Results.Ok(UserResponse.From(user));
-        }).RequireAuthorization();
+        }).RequireAuthorization()
+        .WithSummary("Current user")
+        .WithDescription("Requires login.");
 
         // Always answers the same way so it can't be used to discover which emails exist.
         // There is no email delivery yet: in Development the token is returned in the response.
@@ -110,7 +116,9 @@ public static class AuthEndpoints
             return env.IsDevelopment()
                 ? Results.Ok(new { message, devToken = rawToken })
                 : Results.Ok(new { message });
-        }).RequireRateLimiting(Policies.AuthRateLimit);
+        }).RequireRateLimiting(Policies.AuthRateLimit)
+        .WithSummary("Request a password reset token")
+        .WithDescription("Public. Always answers the same whether or not the email exists. There is no email delivery yet; in Development the token is returned as `devToken`. Rate limited per IP.");
 
         group.MapPost("/reset-password", async (ResetPasswordRequest request, AppDbContext db, CancellationToken ct) =>
         {
@@ -135,7 +143,9 @@ public static class AuthEndpoints
             await db.SaveChangesAsync(ct);
 
             return Results.Ok(new { message = "Password has been reset." });
-        }).RequireRateLimiting(Policies.AuthRateLimit);
+        }).RequireRateLimiting(Policies.AuthRateLimit)
+        .WithSummary("Set a new password with a reset token")
+        .WithDescription("Public. Tokens are single use and expire after 30 minutes. Rate limited per IP.");
     }
 
     internal static string? PasswordError(string? password)
