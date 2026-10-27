@@ -74,6 +74,7 @@ Represents room bookings made by users.
 |---|---|---|---|
 | Id | INTEGER | Yes | Primary key |
 | UserId | INTEGER | Yes | FK -> Users.Id |
+| HotelId | INTEGER | Yes | FK -> Hotels.Id; must match the room's hotel |
 | RoomId | INTEGER | Yes | FK -> Rooms.Id |
 | CheckInDate | TEXT | Yes | Date (YYYY-MM-DD) |
 | CheckOutDate | TEXT | Yes | Date (YYYY-MM-DD) |
