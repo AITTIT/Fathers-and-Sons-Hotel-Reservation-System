@@ -25,7 +25,7 @@ cd HotelReservation.Api
 dotnet run --launch-profile http
 ```
 
-Open http://localhost:5047/ for the development test page (see below). `GET /health` returns a plain-text liveness message.
+`GET /health` returns a plain-text liveness message. For the development test page, see below.
 
 ## Layout
 
@@ -38,7 +38,7 @@ backend/
     Data/AppDbContext.cs       EF Core context
     Data/DevEndpoints.cs       development-only table viewer API
     Features/<Feature>/        entities, DTOs and endpoints, grouped by feature
-    wwwroot/index.html         development test page
+    Features/Common/           paging and authorization policies
 ```
 
 ## Database
@@ -111,6 +111,7 @@ All use the password `Password123!`.
 | `ConnectionStrings:Default` | Npgsql connection string |
 | `Jwt:Key` | HMAC signing key. **Required, at least 32 characters**; the API refuses to start without it |
 | `Jwt:Issuer`, `Jwt:Audience`, `Jwt:ExpiryMinutes` | Optional; default `HotelReservation.Api`, `HotelReservation.Client`, `60` |
+| `Cors:AllowedOrigins` | Array of browser origins allowed to call the API (e.g. `http://localhost:5500`). Empty means no cross-origin browser access. MAUI is unaffected |
 
 The committed `Jwt:Key` is a development placeholder. Outside development, supply real values through environment variables (e.g. `Jwt__Key`, `ConnectionStrings__Default`) or a secret store, never in source control.
 
@@ -141,6 +142,28 @@ Register body: `{ email, password, firstName, lastName, phone? }`. Passwords mus
 
 Access errors return 403; unknown users return 404.
 
+### Hotels
+
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| GET | `/api/hotels` | none | Paged list. Filters: `city`, `country`, `page`, `pageSize` |
+| GET | `/api/hotels/{id}` | none | One hotel. 404 if unknown |
+| POST | `/api/hotels` | Admin | `{ name, addressLine1, city, country, postalCode? }`. 201 |
+| PUT | `/api/hotels/{id}` | Admin | Same body. 200 |
+| DELETE | `/api/hotels/{id}` | Admin | 204, or 409 if its rooms have reservations |
+
+### Rooms
+
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| GET | `/api/rooms` | none | Paged list of active rooms. Filters: `hotelId`, `roomType`, `minCapacity`, `maxPrice`, `page`, `pageSize`. `includeInactive=true` only takes effect for Staff/Admin |
+| GET | `/api/rooms/{id}` | none | One room. Inactive rooms are 404 unless Staff/Admin |
+| POST | `/api/rooms` | Staff/Admin | `{ hotelId, roomNumber, roomType, capacity, pricePerNight, isActive? }`. 201, 409 if the number exists in that hotel |
+| PUT | `/api/rooms/{id}` | Staff/Admin | Same body. The hotel cannot be changed |
+| DELETE | `/api/rooms/{id}` | Admin | 204, or 409 if it has reservations (deactivate it instead) |
+
+List endpoints return `{ items, total, page, pageSize }`. `pageSize` defaults to 25 and is capped at 100.
+
 ### Roles
 
 - **Customer:** manages their own account.
@@ -151,8 +174,15 @@ The token carries the user id (`sub`), email and role. Tokens stay valid until t
 
 ## Development test page
 
-At http://localhost:5047/ (Development environment only) a single static page lets you:
+The page lives outside the API project, in [test-client/index.html](../test-client/index.html), and talks to the API over HTTP like any real client. Serve it from any static server on an origin listed in `Cors:AllowedOrigins`:
 
+```powershell
+python -m http.server 5500 --directory ..\test-client
+```
+
+Then open http://localhost:5500/. The API base URL defaults to `http://localhost:5047`; override it with `?api=http://host:port`.
+
+It lets you:
 - log in and out, and see who is logged in
 - register, edit profile, change password, request and complete a password reset
 - view the database tables, filtered by the logged-in role
@@ -303,7 +333,8 @@ Notes for real use:
 
 ## Not done yet
 
-- Hotel, room, reservation and payment endpoints
+- Reservation and payment endpoints (hotels and rooms are done)
+- CORS policy for browser clients on other origins, and an OpenAPI document
 - Containerizing the API (Dockerfile, adding it to Compose)
 - Email delivery for password reset
 - Automated tests

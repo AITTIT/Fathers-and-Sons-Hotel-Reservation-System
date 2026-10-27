@@ -95,13 +95,16 @@
 
   <script>
     const TOKEN_KEY = 'authToken';
+    // This page is served from a different origin than the API, so every call needs the base URL.
+    // Override with ?api=http://host:port
+    const API = (new URLSearchParams(location.search).get('api') || 'http://localhost:5047').replace(/\/$/, '');
 
     async function load() {
       const container = document.getElementById('tables');
       container.textContent = 'Loading...';
       try {
         const token = localStorage.getItem(TOKEN_KEY);
-        const res = await fetch('/api/dev/tables', token ? { headers: { Authorization: 'Bearer ' + token } } : undefined);
+        const res = await fetch(API + '/api/dev/tables', token ? { headers: { Authorization: 'Bearer ' + token } } : undefined);
         if (!res.ok) throw new Error(res.status + ' ' + res.statusText);
         const tables = await res.json();
         updateUserPicker(tables);
@@ -190,7 +193,7 @@
     async function restoreSession() {
       const token = localStorage.getItem(TOKEN_KEY);
       if (!token) return showUser(null);
-      const res = await fetch('/api/auth/me', { headers: { Authorization: 'Bearer ' + token } });
+      const res = await fetch(API + '/api/auth/me', { headers: { Authorization: 'Bearer ' + token } });
       if (res.ok) return showUser(await res.json());
       localStorage.removeItem(TOKEN_KEY);
       showUser(null);
@@ -211,7 +214,7 @@
       const token = localStorage.getItem(TOKEN_KEY);
       if (auth && token) headers.Authorization = 'Bearer ' + token;
       try {
-        const res = await fetch(url, { method, headers, body: JSON.stringify(body) });
+        const res = await fetch(API + url, { method, headers, body: JSON.stringify(body) });
         const text = await res.text();
         let data = text;
         let parsed = null;
