@@ -49,11 +49,14 @@
   <div id="tables"></div>
 
   <script>
+    const TOKEN_KEY = 'authToken';
+
     async function load() {
       const container = document.getElementById('tables');
       container.textContent = 'Loading...';
       try {
-        const res = await fetch('/api/dev/tables');
+        const token = localStorage.getItem(TOKEN_KEY);
+        const res = await fetch('/api/dev/tables', token ? { headers: { Authorization: 'Bearer ' + token } } : undefined);
         if (!res.ok) throw new Error(res.status + ' ' + res.statusText);
         const tables = await res.json();
         container.replaceChildren();
@@ -81,7 +84,6 @@
         container.replaceChildren(p);
       }
     }
-    const TOKEN_KEY = 'authToken';
 
     function showUser(user) {
       const who = document.getElementById('who');
@@ -104,6 +106,7 @@
     document.getElementById('logout').onclick = () => {
       localStorage.removeItem(TOKEN_KEY);
       showUser(null);
+      load();
     };
 
     async function submitForm(e, url, onSuccess) {
@@ -129,11 +132,11 @@
     document.getElementById('login').onsubmit = e => submitForm(e, '/api/auth/login', r => {
       localStorage.setItem(TOKEN_KEY, r.token);
       showUser(r.user);
+      load();
     });
     document.getElementById('register').onsubmit = e => submitForm(e, '/api/auth/register', () => load());
     document.getElementById('refresh').onclick = load;
-    restoreSession();
-    load();
+    restoreSession().then(load);
   </script>
 </body>
 </html>
