@@ -2,7 +2,7 @@
 
 ASP.NET Core (.NET 9) Web API backed by PostgreSQL. It is client-agnostic: the MAUI app and browsers use the same HTTP API.
 
-> **Status:** early development. Auth, users, hotels, rooms, reservations are implemented. The API and database run together in Docker Compose.
+> **Status:** early development. Auth, users, hotels and rooms are implemented. Reservations and payments are out of scope for now. The API and database run together in Docker Compose.
 
 ## Quick start
 
@@ -24,9 +24,9 @@ The first start creates the schema, the default admin and some demo data. Log in
 
 | Account | Password | Role |
 |---|---|---|
-| `default-admin@change.me` | `hoteladmin` | Admin |
-| `demo-staff@change.me` | `hoteldemo` | Staff |
-| `demo-customer1@change.me`, `demo-customer2@change.me` | `hoteldemo` | Customer |
+| `admin@hotel.com` | `hoteladmin` | Admin |
+| `staff@hotel.com` | `hoteldemo` | Staff |
+| `customer1@hotel.com`, `customer2@hotel.com` | `hoteldemo` | Customer |
 
 Common tasks:
 
@@ -60,14 +60,14 @@ General conventions:
 - JSON over HTTP, `camelCase`. Protected endpoints need `Authorization: Bearer <token>`.
 - List endpoints return `{ items, total, page, pageSize }` (default page size 25, max 100).
 - Errors are `{ "error": "..." }`, or a validation problem document (400).
-- Roles: **Customer** (own account, reservations and payments; other people's are 404), **Staff** (read access to everything operational, manage rooms and reservations), **Admin** (everything, including users and hotels).
+- Roles: **Customer** (own account), **Staff** (manage rooms, list customer accounts), **Admin** (everything, including users and hotels).
 - Tokens last 60 minutes and stay valid after a password change.
 - Password reset has no email delivery yet. In Development `forgot-password` returns the token as `devToken`; elsewhere it is never returned.
-- Payments are simulated: staff "complete" a payment to stand in for a provider callback. There are no refunds, and reservations are cancelled, never deleted.
+- There are no reservation or payment endpoints for now. See [Deferred work](#deferred-work).
 
 ## Database
 
-Schema changes are EF Core migrations ([`Migrations/`](HotelReservation.Api/Migrations)), applied automatically at startup. The overlap exclusion constraint, capacity trigger and `btree_gist` extension are raw SQL inside `InitialCreate`. The design is in [`../Documentation/DatabaseSchema.md`](../Documentation/DatabaseSchema.md).
+Schema changes are EF Core migrations ([`Migrations/`](HotelReservation.Api/Migrations)), applied automatically at startup. The overlap exclusion constraint and capacity trigger from `InitialCreate` are dropped by `RemoveReservationRules` until the booking rules return. The design is in [`../Documentation/DatabaseSchema.md`](../Documentation/DatabaseSchema.md).
 
 ```powershell
 cd backend\HotelReservation.Api
@@ -98,7 +98,7 @@ Development uses `default-admin@change.me` / `hoteladmin`. Without this config a
 
 ### Demo data
 
-With `Seed:Demo=true` (`Seed__Demo`, on in `docker-compose.yml`), an empty database also gets 3 hotels, 24 rooms (one inactive), the demo staff and customer accounts above, 3 reservations and 2 payments. It runs only in the Development environment and only when there are no hotels yet, in one transaction. Set it to `false` in Compose for an empty system. Demo data is not added to a database that already has hotels; `docker compose down -v` to start clean.
+With `Seed:Demo=true` (`Seed__Demo`, on in `docker-compose.yml`), an empty database also gets 3 hotels, 24 rooms (one inactive), and the demo staff and customer accounts above. It runs only in the Development environment and only when there are no hotels yet, in one transaction. Set it to `false` in Compose for an empty system. Demo data is not added to a database that already has hotels; `docker compose down -v` to start clean.
 
 ## Configuration
 
@@ -114,7 +114,7 @@ With `Seed:Demo=true` (`Seed__Demo`, on in `docker-compose.yml`), an empty datab
 
 ## Development test page
 
-[`test-client/index.html`](../test-client/index.html) lives outside the API project and calls it over HTTP like a real client. It has forms for the auth, user, hotel, room, reservation and payment endpoints, plus tables of what the logged-in role can see. Compose serves it on http://localhost:5500 (nginx, with the folder mounted so edits show on refresh); that origin is already in the API's CORS list. To serve it yourself instead:
+[`test-client/index.html`](../test-client/index.html) lives outside the API project and calls it over HTTP like a real client. It has forms for the auth, user, hotel and room endpoints, plus tables of what the logged-in role can see. Compose serves it on http://localhost:5500 (nginx, with the folder mounted so edits show on refresh); that origin is already in the API's CORS list. To serve it yourself instead:
 
 ```powershell
 python -m http.server 5500 --directory ..\test-client
@@ -127,6 +127,27 @@ The API URL defaults to `http://localhost:5047`; override it with `?api=http://h
 - If `dotnet build` fails copying `HotelReservation.Api.exe`, a running API instance is locking it. Stop it first.
 - The `https` launch profile listens on `https://localhost:7170` (trust the dev certificate with `dotnet dev-certs https --trust`).
 
+## Deferred work
+
+Reservations and payments are out of scope for now, so the API has no endpoints for them. The `Reservation` and `Payment` models and their tables remain, and deleting a room or hotel still checks them. Business logic belongs in this API when they return. The previous endpoints are in commit `60c4c19` (`ReservationEndpoints.cs`, `PaymentEndpoints.cs`) if you want to reuse them.
+
+Reservations:
+
+- Reservation endpoints
+- Calculate `totalPrice` on the server from the room's nightly price and re-calculate it on changes
+- Prevent overlapping bookings for a room, including a database constraint for simultaneous requests
+- Reject guest counts above room capacity, past check-in dates and inactive rooms
+- Status flow: confirm only `Pending`, no changes after `Cancelled`
+- Customers can't change or cancel a stay that has started
+
+Payments:
+
+- Payment endpoints
+- Calculate `amount` on the server from what is still owed
+- Reject payments for cancelled or fully paid reservations, and allow one pending payment per reservation
+- Restrict providers to Visa, PayPal and MobilePay
+- A successful payment confirms a `Pending` reservation
+
 ## Not done yet
 
 - A production profile (no dev settings, HTTPS reverse proxy, unpublished Postgres port)
@@ -137,6 +158,5 @@ The API URL defaults to `http://localhost:5047`; override it with `?api=http://h
 
 ## Known issues
 - Everything is Development-only. The credentials, the dev reset token and the docs are for local use, and Postgres is published on 5432. It's fine for development and not for deployment.
-- Payments are simulated. Staff mark them complete by hand.
 - Password reset only works in Development, because it returns a dev token instead of sending email.
 - No automated tests and no CI yet.

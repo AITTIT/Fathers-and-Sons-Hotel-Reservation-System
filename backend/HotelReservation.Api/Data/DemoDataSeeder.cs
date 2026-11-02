@@ -1,6 +1,4 @@
 using HotelReservation.Api.Features.Hotels;
-using HotelReservation.Api.Features.Payments;
-using HotelReservation.Api.Features.Reservations;
 using HotelReservation.Api.Features.Rooms;
 using HotelReservation.Api.Features.Users;
 using Microsoft.EntityFrameworkCore;
@@ -21,7 +19,6 @@ public static class DemoDataSeeder
         await using var transaction = await db.Database.BeginTransactionAsync();
 
         var now = DateTime.UtcNow;
-        var today = DateOnly.FromDateTime(now);
         var hash = BCrypt.Net.BCrypt.HashPassword(Password, 11);
 
         User NewUser(string email, string first, string last, string role) => new()
@@ -30,9 +27,9 @@ public static class DemoDataSeeder
             CreatedAtUtc = now, UpdatedAtUtc = now
         };
 
-        var staff = NewUser("demo-staff@change.me", "Demo", "Staff", "Staff");
-        var customer1 = NewUser("demo-customer1@change.me", "Demo", "Customer One", "Customer");
-        var customer2 = NewUser("demo-customer2@change.me", "Demo", "Customer Two", "Customer");
+        var staff = NewUser("staff@hotel.com", "Demo", "Staff", "Staff");
+        var customer1 = NewUser("customer1@hotel.com", "Demo", "Customer One", "Customer");
+        var customer2 = NewUser("customer2@hotel.com", "Demo", "Customer Two", "Customer");
         var existing = await db.Users.Select(u => u.Email).ToListAsync();
         db.Users.AddRange(new[] { staff, customer1, customer2 }.Where(u => !existing.Contains(u.Email)));
 
@@ -67,34 +64,8 @@ public static class DemoDataSeeder
         db.Rooms.AddRange(rooms);
         await db.SaveChangesAsync();
 
-        Reservation Book(User user, Room room, int startInDays, int nights, int guests, string status) => new()
-        {
-            UserId = user.Id, HotelId = room.HotelId, RoomId = room.Id,
-            CheckInDate = today.AddDays(startInDays), CheckOutDate = today.AddDays(startInDays + nights),
-            GuestCount = guests, Status = status, TotalPrice = room.PricePerNight * nights,
-            CreatedAtUtc = now, UpdatedAtUtc = now
-        };
-
-        var confirmed = Book(customer1, rooms[2], 7, 3, 2, "Confirmed");   // Double
-        var pending = Book(customer2, rooms[4], 14, 2, 2, "Pending");      // Family
-        var cancelled = Book(customer1, rooms[5], 21, 4, 3, "Cancelled");  // Family
-        db.Reservations.AddRange(confirmed, pending, cancelled);
-        await db.SaveChangesAsync();
-
-        db.Payments.AddRange(
-            new Payment
-            {
-                ReservationId = confirmed.Id, Provider = "Visa", ProviderTransactionId = "demo-txn-1", Amount = confirmed.TotalPrice,
-                Status = "Succeeded", PaidAtUtc = now, CreatedAtUtc = now
-            },
-            new Payment
-            {
-                ReservationId = pending.Id, Provider = "PayPal", Amount = pending.TotalPrice,
-                Status = "Pending", CreatedAtUtc = now
-            });
-        await db.SaveChangesAsync();
         await transaction.CommitAsync();
 
-        logger.LogInformation("Seeded demo data: 3 hotels, {Rooms} rooms, 3 demo users, 3 reservations, 2 payments.", rooms.Count);
+        logger.LogInformation("Seeded demo data: 3 hotels, {Rooms} rooms, 3 demo users.", rooms.Count);
     }
 }

@@ -43,8 +43,6 @@
     <nav>
       <a href="#auth">Auth</a>
       <a href="#hotels" class="needs-login">Hotels &amp; rooms</a>
-      <a href="#reservations" class="needs-login">Reservations</a>
-      <a href="#payments" class="needs-login">Payments</a>
       <a href="#account" class="needs-login">Account</a>
       <a href="#data">Data</a>
     </nav>
@@ -130,55 +128,6 @@
       </div>
     </section>
 
-    <section id="reservations">
-      <h1>Reservations</h1>
-      <div class="forms">
-        <form id="reservationForm">
-          <h2>Create reservation</h2>
-          <select name="roomId" data-number data-source="activeRooms" required></select>
-          <label>Check-in <input name="checkInDate" type="date" required></label>
-          <label>Check-out <input name="checkOutDate" type="date" required></label>
-          <input name="guestCount" type="number" min="1" value="1" placeholder="Guests" required>
-          <select name="userId" data-number data-source="users" data-blank="Book for myself" title="Staff/Admin only"></select>
-          <button>Create reservation</button>
-        </form>
-        <form id="reservationAction">
-          <h2>Confirm / cancel reservation</h2>
-          <select name="id" data-source="reservations" required></select>
-          <button value="cancel">Cancel</button>
-          <button value="confirm">Confirm (Staff/Admin)</button>
-        </form>
-      </div>
-    </section>
-
-    <section id="payments">
-      <h1>Payments</h1>
-      <div class="forms">
-        <form id="paymentForm">
-          <h2>Create payment</h2>
-          <select name="reservationId" data-number data-source="payableReservations" required></select>
-          <select name="provider" required>
-            <option>Visa</option>
-            <option>PayPal</option>
-            <option>MobilePay</option>
-          </select>
-          <button>Create payment</button>
-        </form>
-        <form id="paymentComplete">
-          <h2>Complete payment (Staff/Admin)</h2>
-          <select name="id" data-source="pendingPayments" required></select>
-          <select name="succeeded" data-bool><option value="true">Succeeded</option><option value="false">Failed</option></select>
-          <input name="providerTransactionId" placeholder="Provider transaction id (optional)">
-          <button>Complete</button>
-        </form>
-        <form id="paymentCancel">
-          <h2>Cancel payment</h2>
-          <select name="id" data-source="pendingPayments" required></select>
-          <button>Cancel payment</button>
-        </form>
-      </div>
-    </section>
-
     <section id="account">
       <h1>Account</h1>
       <div id="userPicker" hidden>
@@ -245,21 +194,11 @@
     }
 
     // Dropdown sources: what each data-source select lists, built from the loaded tables.
-    const money = n => Number(n).toFixed(2);
     const sources = {
       hotels: { list: d => d.hotels, label: (h) => `${h.name} (${h.city})` },
       rooms: { list: d => d.rooms, label: (r, d) => `${hotelName(d, r.hotelId)} - room ${r.roomNumber}, ${r.roomType}${r.isActive ? '' : ' [inactive]'}` },
-      activeRooms: { list: d => d.rooms.filter(r => r.isActive), label: (r, d) => `${hotelName(d, r.hotelId)} - room ${r.roomNumber}, ${r.roomType}, up to ${r.capacity}, ${money(r.pricePerNight)}/night` },
-      users: { list: d => d.users, label: u => `${u.firstName} ${u.lastName} <${u.email}> [${u.role}]` },
-      reservations: { list: d => d.reservations, label: reservationLabel },
-      payableReservations: { list: d => d.reservations.filter(r => r.status === 'Pending' && !d.payments.some(p => p.reservationId === r.id && p.status === 'Pending')), label: reservationLabel },
-      pendingPayments: { list: d => d.payments.filter(p => p.status === 'Pending'), label: p => `Payment #${p.id} - reservation #${p.reservationId}, ${p.provider}, ${money(p.amount)} ${p.currency}` }
     };
     const hotelName = (d, id) => d.hotels.find(h => h.id === id)?.name ?? `hotel ${id}`;
-    function reservationLabel(r, d) {
-      const room = d.rooms.find(x => x.id === r.roomId);
-      return `#${r.id} - ${hotelName(d, r.hotelId)}, room ${room?.roomNumber ?? r.roomId}, ${r.checkInDate} to ${r.checkOutDate} [${r.status}]`;
-    }
 
     function fillSelects(data) {
       for (const select of document.querySelectorAll('select[data-source]')) {
@@ -302,14 +241,12 @@
           fetchTable('Rooms', '/api/rooms' + (role === 'Staff' || role === 'Admin' ? '?includeInactive=true' : ''))
         ];
         if (currentUser) {
-          requests.push(fetchTable('Reservations', '/api/reservations'), fetchTable('Payments', '/api/payments'));
           if (role === 'Staff' || role === 'Admin') requests.push(fetchTable('Users', '/api/users'));
         }
         const tables = await Promise.all(requests);
         const itemsOf = name => tables.find(t => t.name === name)?.items ?? [];
         fillSelects({
-          hotels: itemsOf('Hotels'), rooms: itemsOf('Rooms'), reservations: itemsOf('Reservations'),
-          payments: itemsOf('Payments'), users: itemsOf('Users')
+          hotels: itemsOf('Hotels'), rooms: itemsOf('Rooms')
         });
         updateUserPicker(tables);
         container.replaceChildren();
@@ -488,21 +425,6 @@
       const id = e.target.elements.id.value;
       if (!confirm(`Delete hotel #${id} and all of its rooms?`)) return e.preventDefault();
       return submitForm(e, `/api/hotels/${id}`, created, { method: 'DELETE', auth: true });
-    };
-    document.getElementById('reservationForm').onsubmit = e => submitForm(e, '/api/reservations', created, { auth: true });
-    document.getElementById('reservationAction').onsubmit = e => {
-      e.target.dataset.urlFields = 'id';
-      return submitForm(e, `/api/reservations/${e.target.elements.id.value}/${e.submitter.value}`, created, { auth: true });
-    };
-    document.getElementById('paymentForm').onsubmit = e => submitForm(e, '/api/payments', created, { auth: true });
-    document.getElementById('paymentComplete').onsubmit = e => {
-      const id = e.target.elements.id.value;
-      e.target.dataset.urlFields = 'id';
-      return submitForm(e, `/api/payments/${id}/complete`, created, { auth: true });
-    };
-    document.getElementById('paymentCancel').onsubmit = e => {
-      e.target.dataset.urlFields = 'id';
-      return submitForm(e, `/api/payments/${e.target.elements.id.value}/cancel`, created, { auth: true });
     };
     document.getElementById('refresh').onclick = load;
     restoreSession().then(load);

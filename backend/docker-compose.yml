@@ -32,7 +32,7 @@ services:
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__Default: Host=postgres;Port=5432;Database=hotel_reservation;Username=postgres;Password=postgres
       Jwt__Key: dev-only-signing-key-change-me-0123456789abcdef
-      Seed__Admin__Email: default-admin@change.me
+      Seed__Admin__Email: admin@hotel.com
       Seed__Admin__Password: hoteladmin
       # Sample hotels, rooms, users and bookings for frontend work. Set to false for an empty system.
       Seed__Demo: "true"

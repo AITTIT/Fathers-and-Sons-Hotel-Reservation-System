@@ -338,11 +338,13 @@ namespace HotelReservation.Api.Migrations
 
             modelBuilder.Entity("HotelReservation.Api.Features.Rooms.Room", b =>
                 {
-                    b.HasOne("HotelReservation.Api.Features.Hotels.Hotel", null)
-                        .WithMany()
+                    b.HasOne("HotelReservation.Api.Features.Hotels.Hotel", "Hotel")
+                        .WithMany("Rooms")
                         .HasForeignKey("HotelId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Hotel");
                 });
 
             modelBuilder.Entity("HotelReservation.Api.Features.Users.PasswordResetToken", b =>
@@ -352,6 +354,11 @@ namespace HotelReservation.Api.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("HotelReservation.Api.Features.Hotels.Hotel", b =>
+                {
+                    b.Navigation("Rooms");
                 });
 #pragma warning restore 612, 618
         }
