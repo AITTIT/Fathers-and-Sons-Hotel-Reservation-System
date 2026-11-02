@@ -126,7 +126,6 @@ The API URL defaults to `http://localhost:5047`; override it with `?api=http://h
 ## Tips
 
 - If `dotnet build` fails copying `HotelReservation.Api.exe`, a running API instance is locking it. Stop it first.
-- The `https` launch profile listens on `https://localhost:7170` (trust the dev certificate with `dotnet dev-certs https --trust`).
 
 ## Deferred work
 
