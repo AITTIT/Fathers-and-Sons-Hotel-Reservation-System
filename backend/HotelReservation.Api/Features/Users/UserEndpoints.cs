@@ -1,6 +1,7 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using HotelReservation.Api.Data;
+using HotelReservation.Api.Features.Auth;
 using HotelReservation.Api.Features.Common;
 using Microsoft.EntityFrameworkCore;
 
@@ -100,7 +101,7 @@ public static class UserEndpoints
             if (!CanAccess(caller, id, out var isAdmin))
                 return Results.Forbid();
 
-            if (AuthEndpoints.PasswordError(request.NewPassword) is { } passwordError)
+            if (PasswordRules.Error(request.NewPassword) is { } passwordError)
                 return Results.ValidationProblem(new Dictionary<string, string[]> { [nameof(request.NewPassword)] = [passwordError] });
 
             var user = await db.Users.FirstOrDefaultAsync(u => u.Id == id, ct);
@@ -117,7 +118,7 @@ public static class UserEndpoints
             }
 
             var now = DateTime.UtcNow;
-            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword, workFactor: 11);
+            user.PasswordHash = PasswordRules.Hash(request.NewPassword);
             user.UpdatedAtUtc = now;
             await using var tx = await db.Database.BeginTransactionAsync(ct);
             await db.SaveChangesAsync(ct);

@@ -2,16 +2,15 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using HotelReservation.Api.Data;
 using HotelReservation.Api.Features.Common;
+using HotelReservation.Api.Features.Users;
 using Microsoft.EntityFrameworkCore;
 
-namespace HotelReservation.Api.Features.Users;
+namespace HotelReservation.Api.Features.Auth;
 
 public static class AuthEndpoints
 {
-    private const int MinPasswordLength = 8;
-
     // Used to keep login timing similar when the email does not exist.
-    private static readonly string DummyHash = BCrypt.Net.BCrypt.HashPassword("dummy-password");
+    private static readonly string DummyHash = PasswordRules.Hash("dummy-password");
 
     public static void MapAuthEndpoints(this WebApplication app)
     {
@@ -31,7 +30,7 @@ public static class AuthEndpoints
             var user = new User
             {
                 Email = email,
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password, workFactor: 11),
+                PasswordHash = PasswordRules.Hash(request.Password),
                 FirstName = request.FirstName.Trim(),
                 LastName = request.LastName.Trim(),
                 Phone = string.IsNullOrWhiteSpace(request.Phone) ? null : request.Phone.Trim(),
@@ -161,7 +160,7 @@ public static class AuthEndpoints
 
         group.MapPost("/reset-password", async (ResetPasswordRequest request, AppDbContext db, CancellationToken ct) =>
         {
-            if (PasswordError(request.NewPassword) is { } passwordError)
+            if (PasswordRules.Error(request.NewPassword) is { } passwordError)
                 return Results.ValidationProblem(new Dictionary<string, string[]> { [nameof(request.NewPassword)] = [passwordError] });
 
             const string invalid = "Invalid or expired reset token.";
@@ -177,7 +176,7 @@ public static class AuthEndpoints
                 return Results.BadRequest(new { error = invalid });
 
             entry.Token.UsedAtUtc = now;
-            entry.User.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword, workFactor: 11);
+            entry.User.PasswordHash = PasswordRules.Hash(request.NewPassword);
             entry.User.UpdatedAtUtc = now;
             await using var tx = await db.Database.BeginTransactionAsync(ct);
             await db.SaveChangesAsync(ct);
@@ -217,17 +216,7 @@ public static class AuthEndpoints
         Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32))
             .Replace('+', '-').Replace('/', '_').TrimEnd('=');
 
-    internal static string? PasswordError(string? password)
-    {
-        if (string.IsNullOrEmpty(password) || password.Length < MinPasswordLength)
-            return $"Password must be at least {MinPasswordLength} characters.";
-        // bcrypt only uses the first 72 bytes
-        if (System.Text.Encoding.UTF8.GetByteCount(password) > 72)
-            return "Password must be at most 72 bytes.";
-        return null;
-    }
-
-    internal static string HashToken(string token) =>
+    private static string HashToken(string token) =>
         Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(token)));
 
     private static Dictionary<string, string[]> Validate(RegisterRequest r)
@@ -236,7 +225,7 @@ public static class AuthEndpoints
 
         if (string.IsNullOrWhiteSpace(r.Email) || !r.Email.Contains('@') || r.Email.Trim().Length > 254)
             errors[nameof(r.Email)] = ["A valid email is required."];
-        if (PasswordError(r.Password) is { } passwordError)
+        if (PasswordRules.Error(r.Password) is { } passwordError)
             errors[nameof(r.Password)] = [passwordError];
         if (string.IsNullOrWhiteSpace(r.FirstName))
             errors[nameof(r.FirstName)] = ["First name is required."];

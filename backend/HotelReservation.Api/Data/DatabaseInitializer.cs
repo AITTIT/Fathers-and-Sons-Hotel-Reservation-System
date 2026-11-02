@@ -1,3 +1,4 @@
+using HotelReservation.Api.Features.Auth;
 using HotelReservation.Api.Features.Users;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
@@ -64,7 +65,7 @@ public static class DatabaseInitializer
             logger.LogWarning("There is no admin account. Set Seed:Admin:Email and Seed:Admin:Password to create one at startup.");
             return;
         }
-        if (AuthEndpoints.PasswordError(options.Password) is { } passwordError)
+        if (PasswordRules.Error(options.Password) is { } passwordError)
             throw new InvalidOperationException($"Seed:Admin:Password is invalid: {passwordError}");
 
         var email = options.Email.Trim().ToLowerInvariant();
@@ -75,7 +76,7 @@ public static class DatabaseInitializer
         db.Users.Add(new User
         {
             Email = email,
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword(options.Password, 11),
+            PasswordHash = PasswordRules.Hash(options.Password),
             FirstName = options.FirstName.Trim(),
             LastName = options.LastName.Trim(),
             Role = "Admin",

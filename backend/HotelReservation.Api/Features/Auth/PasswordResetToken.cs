@@ -1,4 +1,4 @@
-namespace HotelReservation.Api.Features.Users;
+namespace HotelReservation.Api.Features.Auth;
 
 public class PasswordResetToken
 {

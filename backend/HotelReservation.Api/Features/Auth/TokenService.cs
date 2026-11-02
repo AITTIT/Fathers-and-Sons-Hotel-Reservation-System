@@ -1,9 +1,10 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using HotelReservation.Api.Features.Users;
 using Microsoft.IdentityModel.Tokens;
 
-namespace HotelReservation.Api.Features.Users;
+namespace HotelReservation.Api.Features.Auth;
 
 public class JwtOptions
 {

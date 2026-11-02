@@ -1,3 +1,4 @@
+using HotelReservation.Api.Features.Auth;
 using HotelReservation.Api.Features.Hotels;
 using HotelReservation.Api.Features.Rooms;
 using HotelReservation.Api.Features.Users;
@@ -19,7 +20,7 @@ public static class DemoDataSeeder
         await using var transaction = await db.Database.BeginTransactionAsync();
 
         var now = DateTime.UtcNow;
-        var hash = BCrypt.Net.BCrypt.HashPassword(Password, 11);
+        var hash = PasswordRules.Hash(Password);
 
         User NewUser(string email, string first, string last, string role) => new()
         {

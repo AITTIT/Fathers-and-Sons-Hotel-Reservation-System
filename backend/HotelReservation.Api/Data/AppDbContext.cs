@@ -1,3 +1,4 @@
+using HotelReservation.Api.Features.Auth;
 using HotelReservation.Api.Features.Hotels;
 using HotelReservation.Api.Features.Payments;
 using HotelReservation.Api.Features.Reservations;

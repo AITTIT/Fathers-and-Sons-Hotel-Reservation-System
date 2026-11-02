@@ -2,6 +2,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Threading.RateLimiting;
 using HotelReservation.Api.Data;
+using HotelReservation.Api.Features.Auth;
 using HotelReservation.Api.Features.Common;
 using HotelReservation.Api.Features.Hotels;
 using HotelReservation.Api.Features.Rooms;
