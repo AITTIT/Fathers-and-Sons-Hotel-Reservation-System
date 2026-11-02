@@ -61,7 +61,8 @@ General conventions:
 - List endpoints return `{ items, total, page, pageSize }` (default page size 25, max 100).
 - Errors are `{ "error": "..." }`, or a validation problem document (400).
 - Roles: **Customer** (own account), **Staff** (manage rooms, list customer accounts), **Admin** (everything, including users and hotels).
-- Tokens last 60 minutes and stay valid after a password change.
+- Access tokens last 15 minutes. `POST /api/auth/refresh` exchanges a refresh token (30 days, one use) for a new pair, and `POST /api/auth/logout` revokes one.
+- Reusing a refresh token ends all of the user's sessions, so clients must only ever send one refresh at a time. A password change or reset ends them too. Either way, an access token already issued keeps working until it expires. Store refresh tokens securely, such as in `SecureStorage` on MAUI.
 - Password reset has no email delivery yet. In Development `forgot-password` returns the token as `devToken`; elsewhere it is never returned.
 - There are no reservation or payment endpoints for now. See [Deferred work](#deferred-work).
 
@@ -108,13 +109,13 @@ With `Seed:Demo=true` (`Seed__Demo`, on in `docker-compose.yml`), an empty datab
 |---|---|
 | `ConnectionStrings:Default` | Npgsql connection string |
 | `Jwt:Key` | Signing key. **Required, at least 32 characters** |
-| `Jwt:Issuer`, `Jwt:Audience`, `Jwt:ExpiryMinutes` | Optional; default `HotelReservation.Api`, `HotelReservation.Client`, `60` |
+| `Jwt:Issuer`, `Jwt:Audience`, `Jwt:ExpiryMinutes`, `Jwt:RefreshTokenDays` | Optional; default `HotelReservation.Api`, `HotelReservation.Client`, `15`, `30` |
 | `Cors:AllowedOrigins` | Browser origins allowed to call the API. Empty means no cross-origin access. MAUI is unaffected |
-| `RateLimiting:AuthPermitLimit`, `RateLimiting:AuthWindowSeconds` | Per-IP limit on register, login, forgot/reset/change-password; default `10` per `60` s, then 429 with `Retry-After`. Behind a reverse proxy, configure forwarded headers so the real client IP is used |
+| `RateLimiting:AuthPermitLimit`, `RateLimiting:AuthWindowSeconds` | Per-IP limit on register, login, refresh, forgot/reset/change-password; default `10` per `60` s, then 429 with `Retry-After`. Behind a reverse proxy, configure forwarded headers so the real client IP is used |
 
 ## Development test page
 
-[`test-client/index.html`](../test-client/index.html) lives outside the API project and calls it over HTTP like a real client. It has a login screen with quick login for the seeded accounts, plus a tab each for hotels, rooms, users and your account. Lists have filters, paging and per-row actions, and a bar at the bottom logs every API call. Raw mode also shows actions your role cannot use and skips browser validation, to test the API's own 400, 401 and 403 responses. Compose serves it on http://localhost:5500 (nginx, with the folder mounted so edits show on refresh); that origin is already in the API's CORS list. To serve it yourself instead:
+[`test-client/index.html`](../test-client/index.html) lives outside the API project and calls it over HTTP like a real client. It has a login screen with quick login for the seeded accounts, plus a tab each for hotels, rooms, users and your account. Lists have filters, paging and per-row actions, and a bar at the bottom logs every API call. Expired access tokens are refreshed automatically, and Log out revokes the refresh token. Raw mode also shows actions your role cannot use and skips browser validation, to test the API's own 400, 401 and 403 responses. Compose serves it on http://localhost:5500 (nginx, with the folder mounted so edits show on refresh); that origin is already in the API's CORS list. To serve it yourself instead:
 
 ```powershell
 python -m http.server 5500 --directory ..\test-client

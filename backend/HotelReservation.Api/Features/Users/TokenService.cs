@@ -12,7 +12,8 @@ public class JwtOptions
     public string Key { get; set; } = string.Empty;
     public string Issuer { get; set; } = "HotelReservation.Api";
     public string Audience { get; set; } = "HotelReservation.Client";
-    public int ExpiryMinutes { get; set; } = 60;
+    public int ExpiryMinutes { get; set; } = 15;
+    public int RefreshTokenDays { get; set; } = 30;
 
     public SymmetricSecurityKey SigningKey => new(Encoding.UTF8.GetBytes(Key));
 }
@@ -38,4 +39,6 @@ public class TokenService(Microsoft.Extensions.Options.IOptions<JwtOptions> opti
 
         return (new JwtSecurityTokenHandler().WriteToken(token), expires);
     }
+
+    public DateTime RefreshTokenExpiry(DateTime now) => now.AddDays(_options.RefreshTokenDays);
 }

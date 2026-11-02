@@ -18,6 +18,8 @@ public class AppDbContext : DbContext
 
     public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
 
+    public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+
     public DbSet<Hotel> Hotels => Set<Hotel>();
 
     public DbSet<Room> Rooms => Set<Room>();
@@ -38,6 +40,13 @@ public class AppDbContext : DbContext
         {
             e.HasOne<User>().WithMany().HasForeignKey(t => t.UserId).OnDelete(DeleteBehavior.Cascade);
             e.HasIndex(t => t.TokenHash).IsUnique();
+        });
+
+        modelBuilder.Entity<RefreshToken>(e =>
+        {
+            e.HasOne<User>().WithMany().HasForeignKey(t => t.UserId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(t => t.TokenHash).IsUnique();
+            e.HasIndex(t => t.UserId);
         });
 
         modelBuilder.Entity<Room>(e =>

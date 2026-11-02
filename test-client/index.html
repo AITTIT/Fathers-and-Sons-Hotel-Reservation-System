@@ -126,6 +126,7 @@
     // Override with ?api=http://host:port
     const API = (new URLSearchParams(location.search).get('api') || 'http://localhost:5047').replace(/\/$/, '');
     const TOKEN_KEY = 'authToken';
+    const REFRESH_KEY = 'refreshToken';
     const RAW_KEY = 'rawMode';
     const LOG_LIMIT = 20;
     const PAGE_SIZES = [25, 50, 100];
@@ -171,7 +172,7 @@
     }
 
     // ---- API calls and the call log ----
-    async function request(method, path, body, { auth = true } = {}) {
+    async function request(method, path, body, { auth = true, retried = false } = {}) {
       const headers = {};
       if (body !== undefined) headers['Content-Type'] = 'application/json';
       const sentToken = auth && state.token;
@@ -188,9 +189,41 @@
         result.data = err.message;
       }
       addLog(method, path, body, result, Math.round(performance.now() - started));
-      if (result.status === 401 && sentToken) endSession('Your session expired. Log in again.');
+      if (result.status === 401 && sentToken) {
+        if (!retried && await refreshSession(sentToken)) return request(method, path, body, { auth, retried: true });
+        // No token left means the user logged out while this call was running.
+        if (state.token) endSession('Your session expired. Log in again.');
+      }
       return result;
     }
+
+    function saveTokens({ token, refreshToken }) {
+      state.token = token;
+      localStorage.setItem(TOKEN_KEY, token);
+      localStorage.setItem(REFRESH_KEY, refreshToken);
+    }
+
+    // A refresh token works once, and reusing one ends every session. So calls that fail together
+    // share one refresh, and the lock stops other tabs refreshing at the same moment.
+    let refreshing = null;
+    function refreshSession(failedToken) {
+      refreshing ??= withRefreshLock(async () => {
+        const latest = localStorage.getItem(TOKEN_KEY);
+        if (latest && latest !== failedToken) {
+          state.token = latest; // Already refreshed, by an earlier call or another tab.
+          return true;
+        }
+        const refreshToken = localStorage.getItem(REFRESH_KEY);
+        if (!refreshToken) return false;
+        const res = await request('POST', '/api/auth/refresh', { refreshToken }, { auth: false });
+        if (res.ok) saveTokens(res.data);
+        return res.ok;
+      }).finally(() => { refreshing = null; });
+      return refreshing;
+    }
+
+    // navigator.locks needs a secure context, which excludes plain http on a LAN address.
+    const withRefreshLock = work => navigator.locks ? navigator.locks.request('hotel-token-refresh', work) : work();
 
     function errorText(res) {
       const d = res.data;
@@ -635,7 +668,7 @@
           })),
         el('div', { className: 'card' }, el('h2', {}, 'Change password'),
           buildForm({
-            fields: passwordFields({ needsCurrent: true }), submitLabel: 'Change password', successNote: 'Password changed.',
+            fields: passwordFields({ needsCurrent: true }), submitLabel: 'Change password', successNote: 'Password changed. You will need to log in again when this session next renews, within 15 minutes.',
             onSubmit: v => request('POST', `/api/users/${state.me.id}/change-password`, v)
           })));
       return { nodes: [content], refresh: async () => draw() };
@@ -681,10 +714,9 @@
       drawTabs();
     }
 
-    function startSession(token, user) {
-      state.token = token;
-      localStorage.setItem(TOKEN_KEY, token);
-      state.me = user;
+    function startSession(session) {
+      saveTokens(session);
+      state.me = session.user;
       state.guest = false;
       state.notice = null;
       views = {}; // Filters and defaults depend on the role.
@@ -694,6 +726,7 @@
     function endSession(notice) {
       state.token = null;
       localStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem(REFRESH_KEY);
       state.me = null;
       state.guest = false;
       state.notice = notice ?? null;
@@ -705,7 +738,7 @@
 
     async function logIn(email, password) {
       const res = await request('POST', '/api/auth/login', { email, password }, { auth: false });
-      if (res.ok) startSession(res.data.token, res.data.user);
+      if (res.ok) startSession(res.data);
       return res;
     }
 
@@ -798,7 +831,11 @@
       localStorage.setItem(RAW_KEY, state.raw);
       drawTabs();
     };
-    $('sessionButton').onclick = () => endSession();
+    $('sessionButton').onclick = () => {
+      const refreshToken = localStorage.getItem(REFRESH_KEY);
+      endSession();
+      if (refreshToken) request('POST', '/api/auth/logout', { refreshToken }, { auth: false });
+    };
     window.addEventListener('hashchange', () => { if (!$('app').hidden) drawTabs(); });
 
     (async function start() {

@@ -9,7 +9,11 @@ public record RegisterRequest(
 
 public record LoginRequest(string Email, string Password);
 
-public record LoginResponse(string Token, DateTime ExpiresAtUtc, UserResponse User);
+public record LoginResponse(string Token, DateTime ExpiresAtUtc, string RefreshToken, DateTime RefreshTokenExpiresAtUtc, UserResponse User);
+
+public record RefreshRequest(string? RefreshToken);
+
+public record LogoutRequest(string? RefreshToken);
 
 // Role is optional; only admins may change it.
 public record UpdateUserRequest(

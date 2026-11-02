@@ -68,11 +68,51 @@ public static class AuthEndpoints
             if (user is null || !valid)
                 return Results.Json(new { error = "Invalid email or password." }, statusCode: StatusCodes.Status401Unauthorized);
 
-            var (token, expires) = tokens.Create(user);
-            return Results.Ok(new LoginResponse(token, expires, UserResponse.From(user)));
+            return Results.Ok(await StartSessionAsync(user, db, tokens, ct));
         }).RequireRateLimiting(Policies.AuthRateLimit)
-        .WithSummary("Log in and get a JWT")
-        .WithDescription("Public. Send the returned token as `Authorization: Bearer <token>`. Rate limited per IP.");
+        .WithSummary("Log in and get tokens")
+        .WithDescription("Public. Send the returned `token` as `Authorization: Bearer <token>`. It is short-lived; use `refreshToken` with `/api/auth/refresh` to get a new one. Rate limited per IP.");
+
+        group.MapPost("/refresh", async (RefreshRequest request, AppDbContext db, TokenService tokens, CancellationToken ct) =>
+        {
+            var hash = HashToken(request.RefreshToken ?? string.Empty);
+            var now = DateTime.UtcNow;
+            var stored = await db.RefreshTokens.AsNoTracking().FirstOrDefaultAsync(t => t.TokenHash == hash, ct);
+            if (stored is null || stored.RevokedAtUtc is not null || stored.ExpiresAtUtc <= now)
+                return InvalidRefreshToken();
+
+            await using var tx = await db.Database.BeginTransactionAsync(ct);
+            // Atomic, so of two simultaneous requests only one can win.
+            var claimed = await db.RefreshTokens
+                .Where(t => t.Id == stored.Id && t.UsedAtUtc == null && t.RevokedAtUtc == null)
+                .ExecuteUpdateAsync(s => s.SetProperty(t => t.UsedAtUtc, now), ct);
+            if (claimed == 0)
+            {
+                // A token can only be used once, so someone else may have a copy. End all of the user's sessions.
+                await RefreshTokens.RevokeAllAsync(db, stored.UserId, now, ct);
+                await tx.CommitAsync(ct);
+                return InvalidRefreshToken();
+            }
+
+            var user = await db.Users.AsNoTracking().FirstAsync(u => u.Id == stored.UserId, ct);
+            var session = await StartSessionAsync(user, db, tokens, ct);
+            await tx.CommitAsync(ct);
+            return Results.Ok(session);
+        }).RequireRateLimiting(Policies.AuthRateLimit)
+        .WithSummary("Exchange a refresh token for new tokens")
+        .WithDescription("Public. Returns a new `token` and a new `refreshToken`, with the user's current role. Each refresh token works once: reusing one ends all of the user's sessions, so clients must never send two refreshes at once. Rate limited per IP.");
+
+        // Possession of the token is enough, because the access token may already have expired.
+        group.MapPost("/logout", async (LogoutRequest request, AppDbContext db, CancellationToken ct) =>
+        {
+            var hash = HashToken(request.RefreshToken ?? string.Empty);
+            await db.RefreshTokens
+                .Where(t => t.TokenHash == hash && t.UsedAtUtc == null && t.RevokedAtUtc == null)
+                .ExecuteUpdateAsync(s => s.SetProperty(t => t.RevokedAtUtc, DateTime.UtcNow), ct);
+            return Results.NoContent();
+        })
+        .WithSummary("Log out")
+        .WithDescription("Public. Revokes the refresh token, so this client must log in again. Always 204, even if the token is unknown or already invalid. The current access token keeps working until it expires.");
 
         group.MapGet("/me", async (ClaimsPrincipal principal, AppDbContext db, CancellationToken ct) =>
         {
@@ -102,8 +142,7 @@ public static class AuthEndpoints
             foreach (var t in stale)
                 t.UsedAtUtc = now;
 
-            var rawToken = Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32))
-                .Replace('+', '-').Replace('/', '_').TrimEnd('=');
+            var rawToken = NewOpaqueToken();
             db.PasswordResetTokens.Add(new PasswordResetToken
             {
                 UserId = user.Id,
@@ -140,13 +179,43 @@ public static class AuthEndpoints
             entry.Token.UsedAtUtc = now;
             entry.User.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword, workFactor: 11);
             entry.User.UpdatedAtUtc = now;
+            await using var tx = await db.Database.BeginTransactionAsync(ct);
             await db.SaveChangesAsync(ct);
+            await RefreshTokens.RevokeAllAsync(db, entry.User.Id, now, ct);
+            await tx.CommitAsync(ct);
 
             return Results.Ok(new { message = "Password has been reset." });
         }).RequireRateLimiting(Policies.AuthRateLimit)
         .WithSummary("Set a new password with a reset token")
-        .WithDescription("Public. Tokens are single use and expire after 30 minutes. Rate limited per IP.");
+        .WithDescription("Public. Tokens are single use and expire after 30 minutes. Ends all of the user's sessions once their access tokens expire. Rate limited per IP.");
     }
+
+    private static IResult InvalidRefreshToken() =>
+        Results.Json(new { error = "Invalid or expired refresh token." }, statusCode: StatusCodes.Status401Unauthorized);
+
+    private static async Task<LoginResponse> StartSessionAsync(User user, AppDbContext db, TokenService tokens, CancellationToken ct)
+    {
+        var now = DateTime.UtcNow;
+        // Keeps the table from growing forever; expired tokens can't do anything any more.
+        await db.RefreshTokens.Where(t => t.UserId == user.Id && t.ExpiresAtUtc <= now).ExecuteDeleteAsync(ct);
+
+        var (token, expires) = tokens.Create(user);
+        var rawRefreshToken = NewOpaqueToken();
+        var refreshExpires = tokens.RefreshTokenExpiry(now);
+        db.RefreshTokens.Add(new RefreshToken
+        {
+            UserId = user.Id,
+            TokenHash = HashToken(rawRefreshToken),
+            CreatedAtUtc = now,
+            ExpiresAtUtc = refreshExpires
+        });
+        await db.SaveChangesAsync(ct);
+        return new LoginResponse(token, expires, rawRefreshToken, refreshExpires, UserResponse.From(user));
+    }
+
+    private static string NewOpaqueToken() =>
+        Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32))
+            .Replace('+', '-').Replace('/', '_').TrimEnd('=');
 
     internal static string? PasswordError(string? password)
     {

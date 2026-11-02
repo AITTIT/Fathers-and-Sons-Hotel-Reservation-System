@@ -116,14 +116,18 @@ public static class UserEndpoints
                     return Results.BadRequest(new { error = "Current password is incorrect." });
             }
 
+            var now = DateTime.UtcNow;
             user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword, workFactor: 11);
-            user.UpdatedAtUtc = DateTime.UtcNow;
+            user.UpdatedAtUtc = now;
+            await using var tx = await db.Database.BeginTransactionAsync(ct);
             await db.SaveChangesAsync(ct);
+            await RefreshTokens.RevokeAllAsync(db, id, now, ct);
+            await tx.CommitAsync(ct);
 
             return Results.Ok(new { message = "Password changed." });
         }).RequireRateLimiting(Policies.AuthRateLimit)
         .WithSummary("Change a password")
-        .WithDescription("Requires login. Yourself: `currentPassword` required. Admin changing another user: not required. Rate limited per IP.");
+        .WithDescription("Requires login. Yourself: `currentPassword` required. Admin changing another user: not required. Ends all of that user's sessions once their access tokens expire. Rate limited per IP.");
     }
 
     private static int? CallerId(ClaimsPrincipal caller) =>
