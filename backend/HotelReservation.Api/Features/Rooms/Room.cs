@@ -1,3 +1,7 @@
+//HotelId on vierasavain, joka osoittaa, mille hotellille huone kuuluu. Hotel- ja Rooms-navigaatio-ominaisuudet kuvaavat 
+//samaa suhdetta C#-malleissa: yhdellä hotellilla voi olla useita huoneita, mutta huone kuuluu yhteen hotelliin.
+using HotelReservation.Api.Features.Hotels;
+
 namespace HotelReservation.Api.Features.Rooms;
 
 public class Room
@@ -5,6 +9,8 @@ public class Room
     public int Id { get; set; }
 
     public int HotelId { get; set; }
+
+    public Hotel Hotel { get; set; } = null!;
 
     public string RoomNumber { get; set; } = string.Empty;
 

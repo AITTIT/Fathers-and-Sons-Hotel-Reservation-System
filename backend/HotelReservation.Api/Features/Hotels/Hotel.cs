@@ -1,3 +1,5 @@
+using HotelReservation.Api.Features.Rooms;
+
 namespace HotelReservation.Api.Features.Hotels;
 
 public class Hotel
@@ -17,4 +19,6 @@ public class Hotel
     public DateTime CreatedAtUtc { get; set; }
 
     public DateTime UpdatedAtUtc { get; set; }
+
+    public ICollection<Room> Rooms { get; set; } = new List<Room>();
 }

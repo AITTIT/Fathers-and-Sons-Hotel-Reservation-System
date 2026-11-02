@@ -43,7 +43,7 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<Room>(e =>
         {
             e.Property(r => r.PricePerNight).HasPrecision(10, 2);
-            e.HasOne<Hotel>().WithMany().HasForeignKey(r => r.HotelId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(r => r.Hotel).WithMany(h => h.Rooms).HasForeignKey(r => r.HotelId).OnDelete(DeleteBehavior.Cascade);
             e.HasIndex(r => new { r.HotelId, r.RoomNumber }).IsUnique();
             // Lets reservations reference (RoomId, HotelId) so a reservation's hotel always matches its room's.
             e.HasAlternateKey(r => new { r.Id, r.HotelId }).HasName("UQ_Rooms_Id_HotelId");
