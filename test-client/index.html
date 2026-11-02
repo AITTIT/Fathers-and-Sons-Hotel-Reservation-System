@@ -2,432 +2,817 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Hotel Reservation - Dev Page</title>
   <style>
-    body { font-family: sans-serif; margin: 0 2rem 12rem; }
-    table { border-collapse: collapse; margin-bottom: 2rem; }
-    th, td { border: 1px solid #ccc; padding: 4px 8px; font-size: 14px; max-width: 480px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    th { background: #eee; }
-    .null { color: #999; font-style: italic; }
-    .error { color: #b00; }
-    form { display: grid; gap: 8px; margin-bottom: 1rem; align-content: start; padding: 12px 14px; border: 1px solid #ddd; border-radius: 6px; background: #fafafa; }
-    form h2 { margin-top: 0; }
-    input, select, button { padding: 5px 8px; font-size: 14px; min-width: 0; max-width: 100%; box-sizing: border-box; }
-    form { min-width: 0; }
-    select { width: 100%; }
-    .forms { display: grid; gap: 1.5rem; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); align-items: start; }
-    #loggedIn { display: grid; gap: 0 2rem; grid-template-columns: repeat(auto-fit, minmax(900px, 1fr)); align-items: start; }
-    #userSelect { max-width: 480px; }
-    #tables { overflow-x: auto; }
-    section { scroll-margin-top: 64px; border-top: 2px solid #ddd; margin-top: 1rem; }
-    h2 { margin: 0.8rem 0 0.4rem; font-size: 1.1rem; }
-    h1 { font-size: 1.4rem; }
-    pre { margin: 0; background: #f4f4f4; padding: 8px; max-height: 220px; overflow: auto; font-size: 13px; }
-    #top { position: sticky; top: 0; z-index: 10; background: #fff; border-bottom: 1px solid #ccc; margin: 0 -2rem 1rem; padding: 8px 2rem; }
-    #session { background: #eef; border: 1px solid #99c; padding: 6px 12px; display: flex; gap: 12px; align-items: center; }
-    #session.in { background: #efe; border-color: #6a6; }
-    nav { margin-top: 6px; display: flex; gap: 14px; flex-wrap: wrap; font-size: 14px; }
-    #responsePanel { position: fixed; right: 12px; bottom: 12px; width: min(720px, 90vw); background: #fff; border: 1px solid #999; box-shadow: 0 2px 8px #0003; z-index: 10; }
-    #responsePanel summary { cursor: pointer; padding: 4px 8px; background: #eee; }
-    #responsePanel.ok summary { background: #cfc; }
-    #responsePanel.bad summary { background: #fcc; }
-    .hint { color: #666; font-size: 13px; }
+    :root { --line: #d8dbe0; --muted: #626a75; --accent: #1f5fbf; --bg: #f5f6f8; --danger: #b3261e; --ok: #1b7a3d; }
+    * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+    body { font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; margin: 0; padding-bottom: 4rem; background: var(--bg); color: #1d2127; }
+    h1 { font-size: 1.05rem; margin: 0; }
+    h2 { font-size: 1.05rem; margin: 0 0 .75rem; }
+    a { color: var(--accent); }
+    input, select, button { font: inherit; padding: 5px 9px; border: 1px solid #b9bec6; border-radius: 5px; background: #fff; color: inherit; min-width: 0; }
+    button { cursor: pointer; }
+    button:hover:not(:disabled) { background: #eef0f3; }
+    button:disabled { opacity: .6; cursor: default; }
+    button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    button.primary:hover:not(:disabled) { background: #194f9f; }
+    button.danger { background: var(--danger); border-color: var(--danger); color: #fff; }
+    button.danger:hover:not(:disabled) { background: #92201a; }
+    button.link { border: 0; background: none; padding: 0; color: var(--accent); text-decoration: underline; text-align: left; }
+    button.link:hover:not(:disabled) { background: none; }
+    button.link.delete { color: var(--danger); }
+    .restricted { outline: 1px dashed var(--danger); outline-offset: 2px; }
+
+    header { position: sticky; top: 0; z-index: 5; background: #fff; border-bottom: 1px solid var(--line); padding: 8px 1.25rem 0; }
+    .bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; }
+    .spacer { flex: 1; }
+    .muted { color: var(--muted); }
+    .small { font-size: 13px; }
+    nav { display: flex; gap: 2px; margin-top: 8px; }
+    nav a { padding: 6px 14px; text-decoration: none; color: var(--muted); border-bottom: 2px solid transparent; }
+    nav a:hover { color: inherit; }
+    nav a.active { color: var(--accent); border-color: var(--accent); font-weight: 600; }
+    main { padding: 1rem 1.25rem; }
+    label.check { display: inline-flex; gap: 5px; align-items: center; }
+
+    .toolbar { display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: end; margin-bottom: .75rem; }
+    .toolbar label:not(.check) { display: grid; gap: 2px; font-size: 12px; color: var(--muted); }
+    .toolbar label.check { padding-bottom: 6px; }
+    .toolbar input:not([type=checkbox]) { width: 140px; }
+    .tableWrap { overflow-x: auto; background: #fff; border: 1px solid var(--line); border-radius: 6px; }
+    .tableWrap.busy { opacity: .55; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { padding: 7px 12px; text-align: left; border-bottom: 1px solid #edeff2; white-space: nowrap; }
+    tbody tr:last-child td { border-bottom: 0; }
+    tbody tr:hover { background: #fafbfc; }
+    th { background: #f0f2f5; font-weight: 600; user-select: none; }
+    th.sortable { cursor: pointer; }
+    th.sortable:hover { background: #e6e9ee; }
+    td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+    td.actions { display: flex; gap: 12px; }
+    .none { color: #98a0aa; font-style: italic; }
+    .badge { display: inline-block; padding: 0 7px; border-radius: 9px; font-size: 12px; background: #e3e6ea; }
+    .badge.good { background: #d9f2e1; color: var(--ok); }
+    .badge.Admin { background: #f7dfdd; color: #8c1d18; }
+    .badge.Staff { background: #dce8fa; color: #174a96; }
+    .empty, .loadError { padding: 1.5rem; text-align: center; color: var(--muted); }
+    .loadError { color: var(--danger); }
+    .pager { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: .6rem; }
+
+    .card { background: #fff; border: 1px solid var(--line); border-radius: 6px; padding: 14px 16px; }
+    .cards { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fill, minmax(min(340px, 100%), 420px)); align-items: start; }
+    form.fields { display: grid; gap: 9px; }
+    form.fields label { display: grid; gap: 2px; font-size: 13px; color: var(--muted); }
+    form.fields input, form.fields select { width: 100%; color: #1d2127; }
+    .static { padding: 5px 0; color: #1d2127; font-size: 14px; }
+    .formError { margin: 0; padding: 6px 9px; color: var(--danger); background: #fdeeed; border-radius: 5px; white-space: pre-line; }
+    .formNote { margin: 0; padding: 6px 9px; color: var(--ok); background: #e9f7ee; border-radius: 5px; white-space: pre-line; }
+    .buttons { display: flex; gap: 8px; justify-content: flex-end; }
+
+    #loginView { max-width: 440px; margin: 2rem auto; padding: 0 1rem; display: grid; gap: 1rem; }
+    #loginView details { background: #fff; border: 1px solid var(--line); border-radius: 6px; padding: 10px 16px; }
+    #loginView summary { cursor: pointer; font-weight: 600; }
+    #loginView details form { margin-top: 10px; }
+
+    dialog { border: 1px solid var(--line); border-radius: 8px; padding: 16px 18px; width: min(460px, 94vw); }
+    dialog::backdrop { background: #0005; }
+
+    #log { position: fixed; left: 0; right: 0; bottom: 0; z-index: 4; background: #fff; border-top: 1px solid #b9bec6; font-size: 13px; }
+    #log > summary { cursor: pointer; padding: 6px 1.25rem; background: #eef0f3; }
+    #log.ok > summary { background: #dcf3e3; }
+    #log.bad > summary { background: #fadcd9; }
+    #logEntries { max-height: 45vh; overflow: auto; padding: 4px 1.25rem 10px; }
+    #logEntries details { border-bottom: 1px solid #edeff2; padding: 3px 0; }
+    #logEntries summary { cursor: pointer; }
+    .code2, .code3, .code4, .code5, .code0 { font-weight: 600; }
+    .code2 { color: var(--ok); }
+    .code3 { color: var(--muted); }
+    .code4, .code5, .code0 { color: var(--danger); }
+    pre { margin: 6px 0; background: #f4f5f7; padding: 8px; overflow: auto; max-height: 240px; font-size: 12px; }
+    pre + h3, h3 { margin: 6px 0 0; font-size: 12px; color: var(--muted); font-weight: 600; }
   </style>
 </head>
 <body>
-  <div id="top">
-    <div id="session">
-      <span id="who">Not logged in</span>
-      <button id="logout" hidden>Logout</button>
-    </div>
-    <nav>
-      <a href="#auth">Auth</a>
-      <a href="#hotels" class="needs-login">Hotels &amp; rooms</a>
-      <a href="#account" class="needs-login">Account</a>
-      <a href="#data">Data</a>
-    </nav>
-  </div>
+  <div id="loginView" hidden></div>
 
-  <section id="auth">
-    <h1>Auth</h1>
-    <div class="forms">
-      <form id="login">
-        <h2>Login</h2>
-        <input name="email" type="email" placeholder="Email" required>
-        <input name="password" type="password" placeholder="Password" required>
-        <button>Login</button>
-      </form>
-      <form id="register">
-        <h2>Register</h2>
-        <input name="email" type="email" placeholder="Email" required>
-        <input name="password" type="password" placeholder="Password (min 8)" required>
-        <input name="firstName" placeholder="First name" required>
-        <input name="lastName" placeholder="Last name" required>
-        <input name="phone" placeholder="Phone (optional)">
-        <button>Register</button>
-      </form>
-      <form id="forgot">
-        <h2>Forgot password</h2>
-        <input name="email" type="email" placeholder="Email" required>
-        <button>Request reset token</button>
-      </form>
-      <form id="reset">
-        <h2>Reset password</h2>
-        <input name="email" type="email" placeholder="Email" required>
-        <input name="token" placeholder="Reset token (filled in by Forgot password)" required>
-        <input name="newPassword" type="password" placeholder="New password (min 8)" required>
-        <button>Reset password</button>
-      </form>
-    </div>
-  </section>
-
-  <div id="loggedIn" hidden>
-    <section id="hotels">
-      <h1>Hotels &amp; rooms</h1>
-      <div class="forms">
-        <form id="hotelForm">
-          <h2>Create hotel (Admin)</h2>
-          <input name="name" placeholder="Name" required>
-          <input name="addressLine1" placeholder="Address" required>
-          <input name="city" placeholder="City" required>
-          <input name="country" placeholder="Country" required>
-          <input name="postalCode" placeholder="Postal code (optional)">
-          <button>Create hotel</button>
-        </form>
-        <form id="roomForm">
-          <h2>Create room (Staff/Admin)</h2>
-          <select name="hotelId" data-number data-source="hotels" required></select>
-          <input name="roomNumber" placeholder="Room number" required>
-          <input name="roomType" placeholder="Type (e.g. Double)" required>
-          <input name="capacity" type="number" min="1" placeholder="Capacity" required>
-          <input name="pricePerNight" type="number" min="0" step="0.01" placeholder="Price per night" required>
-          <select name="isActive" data-bool><option value="true">Active</option><option value="false">Inactive</option></select>
-          <button>Create room</button>
-        </form>
-        <form id="roomEdit">
-          <h2>Edit room (Staff/Admin)</h2>
-          <select name="id" data-source="rooms" required></select>
-          <input name="hotelId" type="hidden">
-          <input name="roomNumber" placeholder="Room number" required>
-          <input name="roomType" placeholder="Type (e.g. Double)" required>
-          <input name="capacity" type="number" min="1" placeholder="Capacity" required>
-          <input name="pricePerNight" type="number" min="0" step="0.01" placeholder="Price per night" required>
-          <select name="isActive" data-bool><option value="true">Active</option><option value="false">Inactive</option></select>
-          <button>Save room</button>
-        </form>
-        <form id="roomDelete">
-          <h2>Delete room (Staff/Admin)</h2>
-          <select name="id" data-source="rooms" required></select>
-          <button>Delete room</button>
-        </form>
-        <form id="hotelDelete">
-          <h2>Delete hotel (Admin)</h2>
-          <select name="id" data-source="hotels" required></select>
-          <button>Delete hotel</button>
-        </form>
-      </div>
-    </section>
-
-    <section id="account">
-      <h1>Account</h1>
-      <div id="userPicker" hidden>
-        <label>Acting on user (admin):
-          <select id="userSelect"></select>
+  <div id="app" hidden>
+    <header>
+      <div class="bar">
+        <h1>Hotel Reservation Dev</h1>
+        <span class="muted small" id="apiUrl"></span>
+        <span class="spacer"></span>
+        <label class="check small" title="Show actions your role can't use and skip browser validation, to test the API's own 400, 401 and 403 responses">
+          <input type="checkbox" id="rawMode"> Raw mode
         </label>
+        <span id="who"></span>
+        <button id="sessionButton"></button>
       </div>
-      <div class="forms">
-        <form id="profile">
-          <h2>Edit profile</h2>
-          <input name="userId" type="hidden">
-          <input name="email" type="email" placeholder="Email" required>
-          <input name="firstName" placeholder="First name" required>
-          <input name="lastName" placeholder="Last name" required>
-          <input name="phone" placeholder="Phone (optional)">
-          <select name="role" title="Admins only">
-            <option value="">Role: unchanged</option>
-            <option>Customer</option>
-            <option>Staff</option>
-            <option>Admin</option>
-          </select>
-          <button>Save</button>
-        </form>
-        <form id="changePassword">
-          <h2>Change password</h2>
-          <input name="userId" type="hidden">
-          <input name="currentPassword" type="password" placeholder="Current password (not needed for admin on others)">
-          <input name="newPassword" type="password" placeholder="New password (min 8)" required>
-          <button>Change password</button>
-        </form>
-      </div>
-    </section>
+      <nav id="tabs"></nav>
+    </header>
+    <main id="content"></main>
   </div>
 
-  <section id="data">
-    <h1>Data (from the API, filtered by your role)</h1>
-    <button id="refresh">Refresh</button>
-    <div id="tables"></div>
-  </section>
-
-  <details id="responsePanel" open>
-    <summary>Response: <span id="status">-</span></summary>
-    <pre id="result">-</pre>
+  <details id="log">
+    <summary><span id="logLatest">No API calls yet</span></summary>
+    <div id="logEntries"></div>
   </details>
 
+  <dialog id="dialog"></dialog>
+
   <script>
-    const TOKEN_KEY = 'authToken';
     // This page is served from a different origin than the API, so every call needs the base URL.
     // Override with ?api=http://host:port
     const API = (new URLSearchParams(location.search).get('api') || 'http://localhost:5047').replace(/\/$/, '');
+    const TOKEN_KEY = 'authToken';
+    const RAW_KEY = 'rawMode';
+    const LOG_LIMIT = 20;
+    const PAGE_SIZES = [25, 50, 100];
+    const ROLES = ['Customer', 'Staff', 'Admin'];
+    // From the seed settings in docker-compose.yml.
+    const QUICK_LOGINS = [
+      { label: 'Admin', email: 'admin@hotel.com', password: 'hoteladmin' },
+      { label: 'Staff', email: 'demo-staff@change.me', password: 'hoteldemo' },
+      { label: 'Customer 1', email: 'demo-customer1@change.me', password: 'hoteldemo' },
+      { label: 'Customer 2', email: 'demo-customer2@change.me', password: 'hoteldemo' }
+    ];
 
-    async function api(path) {
-      const token = localStorage.getItem(TOKEN_KEY);
-      const res = await fetch(API + path, token ? { headers: { Authorization: 'Bearer ' + token } } : undefined);
-      if (!res.ok) throw new Error(`${path}: ${res.status} ${res.statusText}`);
-      return res.json();
-    }
+    const $ = id => document.getElementById(id);
 
-    // Each table comes from its real endpoint; what the server returns already depends on the caller's role.
-    async function fetchTable(name, path) {
-      const { items, total } = await api(path + (path.includes('?') ? '&' : '?') + 'pageSize=100');
-      const columns = items.length ? Object.keys(items[0]) : [];
-      return { name, total, columns, items, rows: items.map(i => columns.map(c => i[c])) };
-    }
-
-    // Dropdown sources: what each data-source select lists, built from the loaded tables.
-    const sources = {
-      hotels: { list: d => d.hotels, label: (h) => `${h.name} (${h.city})` },
-      rooms: { list: d => d.rooms, label: (r, d) => `${hotelName(d, r.hotelId)} - room ${r.roomNumber}, ${r.roomType}${r.isActive ? '' : ' [inactive]'}` },
-    };
-    const hotelName = (d, id) => d.hotels.find(h => h.id === id)?.name ?? `hotel ${id}`;
-
-    function fillSelects(data) {
-      for (const select of document.querySelectorAll('select[data-source]')) {
-        const source = sources[select.dataset.source];
-        const previous = select.value;
-        const items = source.list(data);
-        const options = [];
-        const blank = select.dataset.blank;
-        // Optional pickers always keep a "default" entry; required ones show a hint when empty.
-        if (blank !== undefined) options.push(new Option(blank, ''));
-        else if (!items.length) options.push(new Option('(nothing to pick yet)', ''));
-        for (const item of items) options.push(new Option(source.label(item, data), item.id));
-        select.replaceChildren(...options);
-        if ([...select.options].some(o => o.value === previous)) select.value = previous;
-        // The optional user picker only makes sense for staff and admins.
-        if (blank !== undefined) select.hidden = !items.length;
+    // Builds elements with textContent only, so API data can never be interpreted as HTML.
+    function el(tag, props = {}, ...children) {
+      const node = document.createElement(tag);
+      for (const [k, v] of Object.entries(props)) {
+        if (v === undefined || v === null) continue;
+        if (k in node) node[k] = v;
+        else node.setAttribute(k, v);
       }
-      lastData = data;
-      fillRoomEdit();
+      node.append(...children.flat().filter(c => c !== null && c !== undefined && c !== false));
+      return node;
     }
 
-    // The edit form starts from the selected room's current values.
-    let lastData = null;
-    function fillRoomEdit() {
-      const form = document.getElementById('roomEdit');
-      const room = lastData?.rooms.find(r => String(r.id) === form.elements.id.value);
-      if (!room) return;
-      for (const k of ['hotelId', 'roomNumber', 'roomType', 'capacity', 'pricePerNight']) form.elements[k].value = room[k];
-      form.elements.isActive.value = String(room.isActive);
-    }
-    document.getElementById('roomEdit').elements.id.onchange = fillRoomEdit;
+    const state = { token: localStorage.getItem(TOKEN_KEY), me: null, guest: false, raw: localStorage.getItem(RAW_KEY) === 'true', notice: null };
+    let views = {};
+    let refreshView = () => {};
+    let hotelCache = [];
 
-    async function load() {
-      const container = document.getElementById('tables');
-      container.textContent = 'Loading...';
+    // ---- Permissions (mirrors the API, which remains the authority) ----
+    const isStaff = () => state.me?.role === 'Staff' || state.me?.role === 'Admin';
+    const isAdmin = () => state.me?.role === 'Admin';
+
+    // An action is shown if the role allows it. Raw mode also shows the rest, marked, to test the API's rejection.
+    function actionButton(label, allowed, onClick, className = '') {
+      if (!allowed && !state.raw) return null;
+      return el('button', {
+        type: 'button', className: className + (allowed ? '' : ' restricted'),
+        title: allowed ? '' : 'Your role is not allowed to do this; the API should reject it', onclick: onClick
+      }, label);
+    }
+
+    // ---- API calls and the call log ----
+    async function request(method, path, body, { auth = true } = {}) {
+      const headers = {};
+      if (body !== undefined) headers['Content-Type'] = 'application/json';
+      const sentToken = auth && state.token;
+      if (sentToken) headers.Authorization = 'Bearer ' + state.token;
+      const started = performance.now();
+      const result = { ok: false, status: 0, statusText: 'Network error', data: null };
       try {
-        const role = currentUser?.role;
-        const requests = [
-          fetchTable('Hotels', '/api/hotels'),
-          fetchTable('Rooms', '/api/rooms' + (role === 'Staff' || role === 'Admin' ? '?includeInactive=true' : ''))
-        ];
-        if (currentUser) {
-          if (role === 'Staff' || role === 'Admin') requests.push(fetchTable('Users', '/api/users'));
-        }
-        const tables = await Promise.all(requests);
-        const itemsOf = name => tables.find(t => t.name === name)?.items ?? [];
-        fillSelects({
-          hotels: itemsOf('Hotels'), rooms: itemsOf('Rooms')
-        });
-        updateUserPicker(tables);
-        container.replaceChildren();
-        for (const t of tables) {
-          const h = document.createElement('h2');
-          h.textContent = `${t.name} (${t.rows.length}${t.total > t.rows.length ? ' of ' + t.total : ''} rows)`;
-          const table = document.createElement('table');
-          const head = table.createTHead().insertRow();
-          for (const c of t.columns) head.appendChild(Object.assign(document.createElement('th'), { textContent: c }));
-          const body = table.createTBody();
-          for (const r of t.rows) {
-            const tr = body.insertRow();
-            for (const v of r) {
-              const td = tr.insertCell();
-              if (v === null) { td.textContent = 'NULL'; td.className = 'null'; }
-              else { td.textContent = v; td.title = v; }
-            }
-          }
-          container.append(h, table);
-        }
-      } catch (e) {
-        const p = document.createElement('p');
-        p.className = 'error';
-        p.textContent = 'Failed to load: ' + e.message;
-        container.replaceChildren(p);
-      }
-    }
-
-    let currentUser = null;
-    let usersById = new Map();
-
-    // Admins get every user from GET /api/users; others only ever act on themselves.
-    function updateUserPicker(tables) {
-      const picker = document.getElementById('userPicker');
-      const select = document.getElementById('userSelect');
-      const usersTable = tables.find(t => t.name === 'Users');
-      picker.hidden = !(currentUser?.role === 'Admin' && usersTable);
-      usersById = new Map();
-      if (picker.hidden) return;
-
-      const col = name => usersTable.columns.indexOf(name);
-      const previous = select.value;
-      select.replaceChildren();
-      for (const r of usersTable.rows) {
-        const u = {
-          id: r[col('id')], email: r[col('email')], firstName: r[col('firstName')],
-          lastName: r[col('lastName')], phone: r[col('phone')], role: r[col('role')]
-        };
-        usersById.set(u.id, u);
-        const option = document.createElement('option');
-        option.value = u.id;
-        option.textContent = `${u.firstName} ${u.lastName} <${u.email}> [${u.role}]` + (u.id === currentUser.id ? ' (you)' : '');
-        select.append(option);
-      }
-      select.value = usersById.has(Number(previous)) ? previous : String(currentUser.id);
-    }
-
-    document.getElementById('userSelect').onchange = e => {
-      const user = usersById.get(Number(e.target.value));
-      if (user) fillAccountForms(user);
-    };
-
-    function fillAccountForms(user) {
-      const profile = document.getElementById('profile');
-      for (const [name, value] of Object.entries({
-        userId: user.id, email: user.email, firstName: user.firstName, lastName: user.lastName, phone: user.phone ?? '', role: ''
-      })) profile.elements[name].value = value;
-      document.getElementById('changePassword').elements.userId.value = user.id;
-    }
-
-    function showUser(user) {
-      currentUser = user;
-      document.getElementById('loggedIn').hidden = !user;
-      for (const a of document.querySelectorAll('nav .needs-login')) a.hidden = !user;
-      // Reset the picker so a new login starts on its own account.
-      document.getElementById('userSelect').replaceChildren();
-      if (user) fillAccountForms(user);
-      const who = document.getElementById('who');
-      document.getElementById('session').classList.toggle('in', !!user);
-      document.getElementById('logout').hidden = !user;
-      who.textContent = user
-        ? `Logged in as ${user.firstName} ${user.lastName} <${user.email}> [${user.role}] (id ${user.id})`
-        : 'Not logged in';
-    }
-
-    async function restoreSession() {
-      const token = localStorage.getItem(TOKEN_KEY);
-      if (!token) return showUser(null);
-      const res = await fetch(API + '/api/auth/me', { headers: { Authorization: 'Bearer ' + token } });
-      if (res.ok) return showUser(await res.json());
-      localStorage.removeItem(TOKEN_KEY);
-      showUser(null);
-    }
-
-    document.getElementById('logout').onclick = () => {
-      localStorage.removeItem(TOKEN_KEY);
-      showUser(null);
-      load();
-    };
-
-    async function submitForm(e, url, onSuccess, { method = 'POST', auth = false } = {}) {
-      e.preventDefault();
-      // Empty fields are left out so optional values arrive as null.
-      const body = Object.fromEntries([...new FormData(e.target)].filter(([, v]) => v !== ''));
-      // The API expects real numbers and booleans, not strings.
-      for (const el of e.target.elements) {
-        if (!(el.name in body)) continue;
-        if (el.type === 'number' || 'number' in el.dataset) body[el.name] = Number(body[el.name]);
-        else if ('bool' in el.dataset) body[el.name] = body[el.name] === 'true';
-      }
-      // Fields that only select a resource go in the URL, not the body.
-      for (const k of e.target.dataset.urlFields?.split(',') ?? []) delete body[k];
-      const out = document.getElementById('result');
-      const panel = document.getElementById('responsePanel');
-      const headers = { 'Content-Type': 'application/json' };
-      const token = localStorage.getItem(TOKEN_KEY);
-      if (auth && token) headers.Authorization = 'Bearer ' + token;
-      const show = (ok, status, text) => {
-        panel.className = ok ? 'ok' : 'bad';
-        panel.open = true;
-        document.getElementById('status').textContent = status;
-        out.textContent = text;
-      };
-      try {
-        const res = await fetch(API + url, { method, headers, body: method === 'DELETE' ? undefined : JSON.stringify(body) });
+        const res = await fetch(API + path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
         const text = await res.text();
         let data = text;
-        let parsed = null;
-        try { parsed = JSON.parse(text); data = JSON.stringify(parsed, null, 2); } catch {}
-        show(res.ok, `${res.status} ${res.statusText} - ${method} ${url}`, data);
-        if (res.ok && onSuccess) onSuccess(parsed);
+        try { data = text ? JSON.parse(text) : null; } catch { /* not JSON, keep the text */ }
+        Object.assign(result, { ok: res.ok, status: res.status, statusText: res.statusText, data });
       } catch (err) {
-        show(false, 'Request failed', err.message);
+        result.data = err.message;
       }
+      addLog(method, path, body, result, Math.round(performance.now() - started));
+      if (result.status === 401 && sentToken) endSession('Your session expired. Log in again.');
+      return result;
     }
-    document.getElementById('login').onsubmit = e => submitForm(e, '/api/auth/login', r => {
-      localStorage.setItem(TOKEN_KEY, r.token);
-      showUser(r.user);
-      load();
-    });
-    document.getElementById('register').onsubmit = e => submitForm(e, '/api/auth/register', () => load());
 
-    document.getElementById('profile').onsubmit = e => {
-      const id = e.target.elements.userId.value;
-      return submitForm(e, `/api/users/${id}`, updated => {
-        // Editing yourself refreshes the "logged in as" bar.
-        if (currentUser && updated.id === currentUser.id) showUser(updated);
-        load();
-      }, { method: 'PUT', auth: true });
-    };
-    document.getElementById('changePassword').onsubmit = e =>
-      submitForm(e, `/api/users/${e.target.elements.userId.value}/change-password`, null, { auth: true });
+    function errorText(res) {
+      const d = res.data;
+      if (res.status === 0) return `Could not reach the API at ${API}: ${d}`;
+      // A failed login has its own message; other 401s come back empty.
+      if (res.status === 401 && !d?.error) return '401: you need to log in to do this.';
+      if (res.status === 403) return '403: your role is not allowed to do this.';
+      if (res.status === 429) return '429: too many attempts. Wait a minute and try again.';
+      if (d?.errors) return Object.values(d.errors).flat().join('\n');
+      return d?.error || d?.title || (typeof d === 'string' && d) || `${res.status} ${res.statusText}`;
+    }
 
-    document.getElementById('forgot').onsubmit = e => submitForm(e, '/api/auth/forgot-password', r => {
-      // Dev only: the API returns the token because there is no email delivery yet.
-      if (r.devToken) {
-        const reset = document.getElementById('reset');
-        reset.elements.email.value = e.target.elements.email.value;
-        reset.elements.token.value = r.devToken;
+    const REDACTED = new Set(['password', 'newPassword', 'currentPassword']);
+    const redact = body => body && Object.fromEntries(Object.entries(body).map(([k, v]) => [k, REDACTED.has(k) ? '***' : v]));
+    const pretty = v => typeof v === 'string' ? v : JSON.stringify(v, null, 2);
+
+    function addLog(method, path, body, res, ms) {
+      const line = `${method} ${path} - ${res.status ? res.status + ' ' + res.statusText : 'failed'} - ${ms} ms`;
+      const log = $('log');
+      log.className = res.ok ? 'ok' : 'bad';
+      $('logLatest').textContent = line;
+      const entries = $('logEntries');
+      entries.prepend(el('details', {},
+        el('summary', {},
+          el('span', { className: 'muted' }, new Date().toLocaleTimeString() + '  '),
+          `${method} ${path}  `,
+          el('span', { className: 'code' + String(res.status).charAt(0) }, res.status || 'failed'),
+          el('span', { className: 'muted' }, `  ${ms} ms`)),
+        body !== undefined && el('h3', {}, 'Request'),
+        body !== undefined && el('pre', {}, pretty(redact(body))),
+        el('h3', {}, 'Response'),
+        el('pre', {}, res.data === null ? '(empty)' : pretty(res.data))));
+      while (entries.children.length > LOG_LIMIT) entries.lastChild.remove();
+    }
+
+    // ---- Forms ----
+    // fields: { name, label, type, required, options, step, min, placeholder, value }
+    function buildField(f, values) {
+      const value = values[f.name] ?? f.value ?? '';
+      if (f.type === 'static') return el('label', {}, f.label, el('span', { className: 'static' }, f.text));
+      let control;
+      if (f.type === 'select' || f.type === 'bool') {
+        const options = f.type === 'bool' ? [['true', f.trueLabel], ['false', f.falseLabel]] : f.options;
+        control = el('select', { name: f.name, required: !!f.required }, options.map(([v, l]) => new Option(l, v)));
+        control.value = String(value);
+      } else {
+        control = el('input', {
+          name: f.name, type: f.type || 'text', required: !!f.required, value,
+          placeholder: f.placeholder, autocomplete: f.autocomplete || 'off'
+        });
+        if (f.min !== undefined) control.min = f.min;
+        if (f.step !== undefined) control.step = f.step;
       }
-    });
-    document.getElementById('reset').onsubmit = e => submitForm(e, '/api/auth/reset-password');
-    const created = () => load();
-    document.getElementById('hotelForm').onsubmit = e => submitForm(e, '/api/hotels', created, { auth: true });
-    document.getElementById('roomForm').onsubmit = e => submitForm(e, '/api/rooms', created, { auth: true });
-    document.getElementById('roomEdit').onsubmit = e => {
-      e.target.dataset.urlFields = 'id';
-      return submitForm(e, `/api/rooms/${e.target.elements.id.value}`, created, { method: 'PUT', auth: true });
+      return el('label', {}, f.label + (f.required ? '' : ' (optional)'), control);
+    }
+
+    function readFields(form, fields) {
+      const values = {};
+      for (const f of fields) {
+        if (f.type === 'static') continue;
+        const raw = form.elements[f.name].value;
+        if (raw === '') continue; // Left out, so optional values arrive as null.
+        if (f.type === 'number' || f.numeric) values[f.name] = Number(raw);
+        else if (f.type === 'bool') values[f.name] = raw === 'true';
+        else values[f.name] = raw;
+      }
+      return values;
+    }
+
+    // onSubmit returns an API result, or a string to show as an error. onDone runs after success.
+    function buildForm({ fields, values = {}, submitLabel, submitClass = 'primary', onSubmit, onDone, cancel, successNote }) {
+      const message = el('p', { hidden: true });
+      const submit = el('button', { className: submitClass }, submitLabel);
+      const form = el('form', {
+        className: 'fields', noValidate: state.raw,
+        onsubmit: async e => {
+          e.preventDefault();
+          submit.disabled = true;
+          message.hidden = true;
+          const res = await onSubmit(readFields(form, fields));
+          submit.disabled = false;
+          if (!res.ok) {
+            message.className = 'formError';
+            message.textContent = errorText(res);
+            message.hidden = false;
+            return;
+          }
+          for (const input of form.querySelectorAll('input[type=password]')) input.value = '';
+          if (successNote) {
+            message.className = 'formNote';
+            message.textContent = successNote;
+            message.hidden = false;
+          }
+          onDone?.(res);
+        }
+      },
+      fields.map(f => buildField(f, values)),
+      message,
+      el('div', { className: 'buttons' },
+        cancel && el('button', { type: 'button', onclick: cancel }, 'Cancel'),
+        submit));
+      return form;
+    }
+
+    function closeDialog() { $('dialog').close(); }
+
+    function openFormDialog({ title, ...form }) {
+      const dialog = $('dialog');
+      dialog.replaceChildren(el('h2', {}, title), buildForm({
+        cancel: closeDialog, ...form,
+        onDone: res => { closeDialog(); form.onDone?.(res); }
+      }));
+      dialog.showModal();
+    }
+
+    function openConfirm(title, text, onConfirm) {
+      openFormDialog({
+        title, fields: [{ type: 'static', label: '', text }], submitLabel: 'Delete', submitClass: 'danger',
+        onSubmit: onConfirm, onDone: () => refreshAfterChange()
+      });
+    }
+
+    // ---- Lists: filters, sorting and paging ----
+    function compare(a, b) {
+      if (a === b) return 0;
+      if (a === null || a === undefined) return 1;
+      if (b === null || b === undefined) return -1;
+      return typeof a === 'number' && typeof b === 'number' ? a - b : String(a).localeCompare(String(b), undefined, { numeric: true });
+    }
+
+    function createList({ path, columns, buildFilters, toolbarActions, emptyText, params }) {
+      const list = { page: 1, pageSize: 25, sortKey: null, sortDir: 1, items: [], seq: 0, filters: {} };
+
+      list.host = el('div', { className: 'tableWrap' });
+      list.pager = el('div', { className: 'pager' });
+
+      list.drawTable = () => {
+        const items = [...list.items];
+        const sortColumn = columns.find(c => c.key === list.sortKey);
+        if (sortColumn) {
+          const value = sortColumn.sort || (i => i[sortColumn.key]);
+          items.sort((a, b) => list.sortDir * compare(value(a), value(b)));
+        }
+        const head = columns.map(c => {
+          const arrow = c.key === list.sortKey ? (list.sortDir > 0 ? ' ▲' : ' ▼') : '';
+          return el('th', {
+            className: (c.num ? 'num ' : '') + (c.key ? 'sortable' : ''),
+            title: c.key ? 'Sort the rows on this page' : '',
+            onclick: c.key ? () => {
+              list.sortDir = list.sortKey === c.key ? -list.sortDir : 1;
+              list.sortKey = c.key;
+              list.drawTable();
+            } : null
+          }, c.label + arrow);
+        });
+        const rows = items.map(item => el('tr', {}, columns.map(c => {
+          const content = c.render ? c.render(item) : item[c.key];
+          const empty = content === null || content === undefined || content === '';
+          return el('td', { className: (c.num ? 'num ' : '') + (c.actions ? 'actions' : '') },
+            empty ? el('span', { className: 'none' }, 'none') : content);
+        })));
+        list.host.replaceChildren(el('table', {}, el('thead', {}, el('tr', {}, head)), el('tbody', {}, rows)));
+      };
+
+      list.load = async () => {
+        const seq = ++list.seq;
+        list.host.classList.add('busy');
+        const query = new URLSearchParams({ ...params(list.filters), page: list.page, pageSize: list.pageSize });
+        for (const [k, v] of [...query]) if (v === '' || v === 'undefined') query.delete(k);
+        const res = await request('GET', `${path}?${query}`);
+        if (seq !== list.seq) return; // A newer request has started; ignore this answer.
+        list.host.classList.remove('busy');
+        if (!res.ok) {
+          list.items = [];
+          list.host.replaceChildren(el('div', { className: 'loadError' }, errorText(res)));
+          list.pager.replaceChildren();
+          return;
+        }
+        const { items, total, page, pageSize } = res.data;
+        // Deleting the last row of the last page leaves an empty page.
+        if (!items.length && total > 0 && page > 1) {
+          list.page = Math.ceil(total / pageSize);
+          return list.load();
+        }
+        list.items = items;
+        if (items.length) list.drawTable();
+        else list.host.replaceChildren(el('div', { className: 'empty' }, emptyText));
+        const first = total ? (page - 1) * pageSize + 1 : 0;
+        list.pager.replaceChildren(
+          el('button', { disabled: page <= 1, onclick: () => { list.page--; list.load(); } }, 'Previous'),
+          el('button', { disabled: page * pageSize >= total, onclick: () => { list.page++; list.load(); } }, 'Next'),
+          el('span', { className: 'muted' }, `${first}-${first + items.length - (items.length ? 1 : 0)} of ${total}`),
+          el('label', { className: 'muted small' }, 'Per page ',
+            (() => {
+              const select = el('select', { onchange: e => { list.pageSize = Number(e.target.value); list.page = 1; list.load(); } },
+                PAGE_SIZES.map(s => new Option(s, s)));
+              select.value = String(list.pageSize);
+              return select;
+            })()));
+      };
+
+      let debounce;
+      // Filters reload as you type, but leave the toolbar alone so the input keeps its focus.
+      list.setFilter = (key, value, typing) => {
+        list.filters[key] = value;
+        list.page = 1;
+        clearTimeout(debounce);
+        if (typing) debounce = setTimeout(list.load, 300);
+        else list.load();
+      };
+
+      list.render = () => {
+        const filters = buildFilters(list);
+        return [
+          el('div', { className: 'toolbar' }, filters,
+            el('span', { className: 'spacer' }),
+            el('button', { onclick: () => refreshView() }, 'Refresh'),
+            toolbarActions?.()),
+          list.host, list.pager
+        ];
+      };
+      return list;
+    }
+
+    const textFilter = (list, key, label, type = 'text') => el('label', {}, label,
+      el('input', { type, value: list.filters[key] ?? '', oninput: e => list.setFilter(key, e.target.value, true) }));
+
+    function selectFilter(list, key, label, options) {
+      const select = el('select', { onchange: e => list.setFilter(key, e.target.value) }, options.map(([v, l]) => new Option(l, v)));
+      select.value = list.filters[key] ?? '';
+      return el('label', {}, label, select);
+    }
+
+    // ---- Shared helpers ----
+    const hotelName = id => hotelCache.find(h => h.id === id)?.name ?? `Hotel #${id}`;
+
+    async function loadHotelCache() {
+      const all = [];
+      for (let page = 1; ; page++) {
+        const res = await request('GET', `/api/hotels?page=${page}&pageSize=100`);
+        if (!res.ok) break; // The rooms list still works, showing hotel ids.
+        all.push(...res.data.items);
+        if (all.length >= res.data.total || !res.data.items.length) break;
+      }
+      hotelCache = all;
+    }
+
+    function refreshAfterChange() { refreshView(); }
+
+    // ---- Hotels ----
+    const hotelFields = [
+      { name: 'name', label: 'Name', required: true },
+      { name: 'addressLine1', label: 'Address', required: true },
+      { name: 'city', label: 'City', required: true },
+      { name: 'country', label: 'Country', required: true },
+      { name: 'postalCode', label: 'Postal code' }
+    ];
+
+    function hotelsView() {
+      const list = views.hotels ??= createList({
+        path: '/api/hotels',
+        emptyText: 'No hotels match.',
+        params: f => ({ city: f.city, country: f.country }),
+        buildFilters: l => [textFilter(l, 'city', 'City (exact)'), textFilter(l, 'country', 'Country (exact)')],
+        toolbarActions: () => actionButton('New hotel', isAdmin(), () => openFormDialog({
+          title: 'New hotel', fields: hotelFields, submitLabel: 'Create hotel',
+          onSubmit: v => request('POST', '/api/hotels', v), onDone: refreshAfterChange
+        }), 'primary'),
+        columns: [
+          { key: 'name', label: 'Name', render: h => el('button', { className: 'link', title: 'Show its rooms', onclick: () => showRoomsOf(h.id) }, h.name) },
+          { key: 'addressLine1', label: 'Address' },
+          { key: 'city', label: 'City' },
+          { key: 'country', label: 'Country' },
+          { key: 'postalCode', label: 'Postal code' },
+          { label: 'Actions', actions: true, render: h => [
+            el('button', { className: 'link', onclick: () => showRoomsOf(h.id) }, 'Rooms'),
+            restrictedLink('Edit', isAdmin(), () => openFormDialog({
+              title: `Edit ${h.name}`, fields: hotelFields, values: h, submitLabel: 'Save',
+              onSubmit: v => request('PUT', `/api/hotels/${h.id}`, v), onDone: refreshAfterChange
+            })),
+            restrictedLink('Delete', isAdmin(), () => openConfirm('Delete hotel',
+              `Delete ${h.name} in ${h.city} and all of its rooms?`,
+              () => request('DELETE', `/api/hotels/${h.id}`)), 'delete')
+          ] }
+        ]
+      });
+      return { nodes: list.render(), refresh: list.load };
+    }
+
+    function restrictedLink(label, allowed, onClick, extra = '') {
+      return actionButton(label, allowed, onClick, 'link ' + extra);
+    }
+
+    function showRoomsOf(hotelId) {
+      const rooms = roomsList();
+      rooms.filters.hotelId = String(hotelId);
+      rooms.page = 1;
+      location.hash = 'rooms';
+    }
+
+    // ---- Rooms ----
+    function roomFields(room) {
+      return [
+        room
+          ? { type: 'static', label: 'Hotel', text: `${hotelName(room.hotelId)} (a room can't move to another hotel)` }
+          : { name: 'hotelId', label: 'Hotel', type: 'select', numeric: true, required: true, options: hotelCache.map(h => [h.id, `${h.name} (${h.city})`]) },
+        { name: 'roomNumber', label: 'Room number', required: true },
+        { name: 'roomType', label: 'Type', placeholder: 'e.g. Double', required: true },
+        { name: 'capacity', label: 'Guests', type: 'number', min: 1, required: true },
+        { name: 'pricePerNight', label: 'Price per night', type: 'number', min: 0, step: '0.01', required: true },
+        { name: 'isActive', label: 'Status', type: 'bool', trueLabel: 'Active', falseLabel: 'Inactive', value: 'true', required: true }
+      ];
+    }
+
+    const roomLabel = r => `room ${r.roomNumber} at ${hotelName(r.hotelId)}`;
+
+    function roomsList() {
+      return views.rooms ??= createList({
+        path: '/api/rooms',
+        emptyText: 'No rooms match.',
+        params: f => ({
+          hotelId: f.hotelId, roomType: f.roomType, minCapacity: f.minCapacity, maxPrice: f.maxPrice,
+          includeInactive: (f.includeInactive ?? isStaff()) ? 'true' : ''
+        }),
+        buildFilters: l => [
+          selectFilter(l, 'hotelId', 'Hotel', [['', 'All hotels'], ...hotelCache.map(h => [h.id, h.name])]),
+          textFilter(l, 'roomType', 'Type (exact)'),
+          textFilter(l, 'minCapacity', 'Min. guests', 'number'),
+          textFilter(l, 'maxPrice', 'Max. price', 'number'),
+          (isStaff() || state.raw) && el('label', { className: 'check' + (isStaff() ? '' : ' restricted') },
+            el('input', {
+              type: 'checkbox', checked: l.filters.includeInactive ?? isStaff(),
+              onchange: e => l.setFilter('includeInactive', e.target.checked)
+            }), 'Show inactive')
+        ],
+        toolbarActions: () => actionButton('New room', isStaff(), () => openFormDialog({
+          title: 'New room', fields: roomFields(), submitLabel: 'Create room',
+          values: { hotelId: views.rooms.filters.hotelId ?? '' },
+          onSubmit: v => request('POST', '/api/rooms', v), onDone: refreshAfterChange
+        }), 'primary'),
+        columns: [
+          { key: 'hotelId', label: 'Hotel', sort: r => hotelName(r.hotelId), render: r => hotelName(r.hotelId) },
+          { key: 'roomNumber', label: 'Room' },
+          { key: 'roomType', label: 'Type' },
+          { key: 'capacity', label: 'Guests', num: true },
+          { key: 'pricePerNight', label: 'Price/night', num: true, render: r => Number(r.pricePerNight).toFixed(2) },
+          { key: 'isActive', label: 'Status', render: r => el('span', { className: 'badge' + (r.isActive ? ' good' : '') }, r.isActive ? 'Active' : 'Inactive') },
+          { label: 'Actions', actions: true, render: r => [
+            restrictedLink('Edit', isStaff(), () => openFormDialog({
+              title: `Edit ${roomLabel(r)}`, fields: roomFields(r), values: r, submitLabel: 'Save',
+              onSubmit: v => request('PUT', `/api/rooms/${r.id}`, { ...v, hotelId: r.hotelId }), onDone: refreshAfterChange
+            })),
+            restrictedLink('Delete', isStaff(), () => openConfirm('Delete room', `Delete ${roomLabel(r)}?`,
+              () => request('DELETE', `/api/rooms/${r.id}`)), 'delete')
+          ] }
+        ]
+      });
+    }
+
+    function roomsView() {
+      const list = roomsList();
+      const content = el('div');
+      const refresh = async () => {
+        await loadHotelCache();
+        // The hotel being filtered on may just have been deleted.
+        if (list.filters.hotelId && !hotelCache.some(h => String(h.id) === String(list.filters.hotelId))) list.filters.hotelId = '';
+        content.replaceChildren(...list.render());
+        await list.load();
+      };
+      return { nodes: [content], refresh };
+    }
+
+    // ---- Users ----
+    const profileFields = [
+      { name: 'email', label: 'Email', type: 'email', required: true },
+      { name: 'firstName', label: 'First name', required: true },
+      { name: 'lastName', label: 'Last name', required: true },
+      { name: 'phone', label: 'Phone' }
+    ];
+
+    function onUserSaved(res) {
+      if (res.data.id === state.me?.id) {
+        state.me = res.data;
+        drawSession();
+      }
+      refreshAfterChange();
+    }
+
+    function passwordFields({ needsCurrent }) {
+      return [
+        needsCurrent && { name: 'currentPassword', label: 'Current password', type: 'password', required: true, autocomplete: 'current-password' },
+        { name: 'newPassword', label: 'New password (8 characters or more)', type: 'password', required: true, autocomplete: 'new-password' }
+      ].filter(Boolean);
+    }
+
+    function usersView() {
+      const list = views.users ??= createList({
+        path: '/api/users',
+        emptyText: 'No users match.',
+        params: f => ({ search: f.search, role: f.role }),
+        buildFilters: l => [
+          textFilter(l, 'search', 'Name or email'),
+          selectFilter(l, 'role', 'Role', [['', 'All roles'], ...ROLES.map(r => [r, r])])
+        ],
+        columns: [
+          { key: 'lastName', label: 'Name', render: u => `${u.firstName} ${u.lastName}` + (u.id === state.me?.id ? ' (you)' : '') },
+          { key: 'email', label: 'Email' },
+          { key: 'phone', label: 'Phone' },
+          { key: 'role', label: 'Role', render: u => el('span', { className: 'badge ' + u.role }, u.role) },
+          { label: 'Actions', actions: true, render: u => {
+            const canEdit = isAdmin() || u.id === state.me?.id;
+            return [
+              restrictedLink('Edit', canEdit, () => openFormDialog({
+                title: `Edit ${u.firstName} ${u.lastName}`,
+                fields: [...profileFields, (isAdmin() || state.raw) && {
+                  name: 'role', label: 'Role', type: 'select', options: [['', `Keep ${u.role}`], ...ROLES.map(r => [r, r])]
+                }].filter(Boolean),
+                values: { ...u, role: '' }, submitLabel: 'Save',
+                onSubmit: v => request('PUT', `/api/users/${u.id}`, v), onDone: onUserSaved
+              })),
+              restrictedLink('Change password', canEdit, () => openFormDialog({
+                title: `Change password for ${u.firstName} ${u.lastName}`,
+                fields: passwordFields({ needsCurrent: !isAdmin() || u.id === state.me?.id }), submitLabel: 'Change password',
+                onSubmit: v => request('POST', `/api/users/${u.id}/change-password`, v)
+              }))
+            ];
+          } }
+        ]
+      });
+      return { nodes: list.render(), refresh: list.load };
+    }
+
+    // ---- My account ----
+    function accountView() {
+      const content = el('div', { className: 'cards' });
+      const draw = () => content.replaceChildren(
+        el('div', { className: 'card' }, el('h2', {}, 'Profile'),
+          buildForm({
+            fields: profileFields, values: state.me, submitLabel: 'Save', successNote: 'Saved.',
+            onSubmit: v => request('PUT', `/api/users/${state.me.id}`, v),
+            onDone: res => { state.me = res.data; drawSession(); }
+          })),
+        el('div', { className: 'card' }, el('h2', {}, 'Change password'),
+          buildForm({
+            fields: passwordFields({ needsCurrent: true }), submitLabel: 'Change password', successNote: 'Password changed.',
+            onSubmit: v => request('POST', `/api/users/${state.me.id}/change-password`, v)
+          })));
+      return { nodes: [content], refresh: async () => draw() };
+    }
+
+    // ---- Tabs ----
+    const tabs = [
+      { id: 'hotels', label: 'Hotels', view: hotelsView, visible: () => true },
+      { id: 'rooms', label: 'Rooms', view: roomsView, visible: () => true },
+      { id: 'users', label: 'Users', view: usersView, visible: () => isStaff() || state.raw },
+      { id: 'account', label: 'My account', view: accountView, visible: () => !!state.me }
+    ];
+
+    function currentTab() {
+      const wanted = location.hash.slice(1);
+      const available = tabs.filter(t => t.visible());
+      return available.find(t => t.id === wanted) ?? available[0];
+    }
+
+    function drawTabs() {
+      const active = currentTab();
+      $('tabs').replaceChildren(...tabs.filter(t => t.visible()).map(t =>
+        el('a', { href: '#' + t.id, className: t === active ? 'active' : '' }, t.label)));
+      const view = active.view();
+      $('content').replaceChildren(...view.nodes);
+      refreshView = view.refresh;
+      refreshView();
+    }
+
+    function drawSession() {
+      const me = state.me;
+      $('who').replaceChildren(me
+        ? el('span', {}, `${me.firstName} ${me.lastName} `, el('span', { className: 'badge ' + me.role }, me.role))
+        : el('span', { className: 'muted' }, 'Guest (public access only)'));
+      $('sessionButton').textContent = me ? 'Log out' : 'Log in';
+    }
+
+    // ---- Login screen and session ----
+    function startApp() {
+      $('loginView').hidden = true;
+      $('app').hidden = false;
+      drawSession();
+      drawTabs();
+    }
+
+    function startSession(token, user) {
+      state.token = token;
+      localStorage.setItem(TOKEN_KEY, token);
+      state.me = user;
+      state.guest = false;
+      state.notice = null;
+      views = {}; // Filters and defaults depend on the role.
+      startApp();
+    }
+
+    function endSession(notice) {
+      state.token = null;
+      localStorage.removeItem(TOKEN_KEY);
+      state.me = null;
+      state.guest = false;
+      state.notice = notice ?? null;
+      views = {};
+      refreshView = () => {};
+      if ($('dialog').open) closeDialog();
+      drawLogin();
+    }
+
+    async function logIn(email, password) {
+      const res = await request('POST', '/api/auth/login', { email, password }, { auth: false });
+      if (res.ok) startSession(res.data.token, res.data.user);
+      return res;
+    }
+
+    function drawLogin() {
+      $('app').hidden = true;
+      const view = $('loginView');
+      view.hidden = false;
+
+      const quickError = el('p', { className: 'formError', hidden: true });
+      const quick = el('select', {
+        onchange: async e => {
+          const account = QUICK_LOGINS[e.target.value];
+          if (!account) return;
+          quickError.hidden = true;
+          const res = await logIn(account.email, account.password);
+          if (!res.ok) {
+            e.target.value = '';
+            quickError.textContent = `${account.email}: ${errorText(res)}`;
+            quickError.hidden = false;
+          }
+        }
+      }, new Option('Choose a seeded account...', ''), QUICK_LOGINS.map((a, i) => new Option(`${a.label} (${a.email})`, i)));
+
+      const loginForm = buildForm({
+        fields: [
+          { name: 'email', label: 'Email', type: 'email', required: true, autocomplete: 'username' },
+          { name: 'password', label: 'Password', type: 'password', required: true, autocomplete: 'current-password' }
+        ],
+        submitLabel: 'Log in',
+        onSubmit: v => logIn(v.email, v.password)
+      });
+
+      const registerForm = buildForm({
+        fields: [
+          { name: 'email', label: 'Email', type: 'email', required: true },
+          { name: 'password', label: 'Password (8 characters or more)', type: 'password', required: true, autocomplete: 'new-password' },
+          { name: 'firstName', label: 'First name', required: true },
+          { name: 'lastName', label: 'Last name', required: true },
+          { name: 'phone', label: 'Phone' }
+        ],
+        submitLabel: 'Register', successNote: 'Account created. You can log in now.',
+        onSubmit: v => request('POST', '/api/auth/register', v, { auth: false }),
+        onDone: res => { loginForm.elements.email.value = res.data.email; }
+      });
+
+      const resetDetails = el('details', {}, el('summary', {}, 'Reset password'));
+      const resetForm = buildForm({
+        fields: [
+          { name: 'email', label: 'Email', type: 'email', required: true },
+          { name: 'token', label: 'Reset token', required: true },
+          { name: 'newPassword', label: 'New password (8 characters or more)', type: 'password', required: true, autocomplete: 'new-password' }
+        ],
+        submitLabel: 'Reset password', successNote: 'Password reset. You can log in now.',
+        onSubmit: v => request('POST', '/api/auth/reset-password', v, { auth: false }),
+        onDone: () => { loginForm.elements.email.value = resetForm.elements.email.value; }
+      });
+      resetDetails.append(resetForm);
+
+      const forgotForm = buildForm({
+        fields: [{ name: 'email', label: 'Email', type: 'email', required: true }],
+        submitLabel: 'Request reset token',
+        onSubmit: v => request('POST', '/api/auth/forgot-password', v, { auth: false }),
+        onDone: res => {
+          // Dev only: the API returns the token because there is no email delivery yet.
+          if (res.data.devToken) {
+            resetForm.elements.email.value = forgotForm.elements.email.value;
+            resetForm.elements.token.value = res.data.devToken;
+            resetDetails.open = true;
+          }
+        }
+      });
+
+      view.replaceChildren(
+        el('h1', {}, 'Hotel Reservation Dev'),
+        el('p', { className: 'formError', hidden: !state.notice }, state.notice),
+        el('div', { className: 'card' }, el('h2', {}, 'Quick login'), quick, quickError),
+        el('div', { className: 'card' }, el('h2', {}, 'Log in'), loginForm),
+        el('details', {}, el('summary', {}, 'Register'), registerForm),
+        el('details', {}, el('summary', {}, 'Forgot password'), forgotForm),
+        resetDetails,
+        el('button', { onclick: () => { state.guest = true; state.notice = null; views = {}; startApp(); } }, 'Continue as guest'),
+        el('p', { className: 'muted small' }, 'API: ' + API));
+    }
+
+    // ---- Startup ----
+    $('apiUrl').textContent = API;
+    $('rawMode').checked = state.raw;
+    $('rawMode').onchange = e => {
+      state.raw = e.target.checked;
+      localStorage.setItem(RAW_KEY, state.raw);
+      drawTabs();
     };
-    document.getElementById('roomDelete').onsubmit = e => {
-      const id = e.target.elements.id.value;
-      if (!confirm(`Delete room #${id}?`)) return e.preventDefault();
-      return submitForm(e, `/api/rooms/${id}`, created, { method: 'DELETE', auth: true });
-    };
-    document.getElementById('hotelDelete').onsubmit = e => {
-      const id = e.target.elements.id.value;
-      if (!confirm(`Delete hotel #${id} and all of its rooms?`)) return e.preventDefault();
-      return submitForm(e, `/api/hotels/${id}`, created, { method: 'DELETE', auth: true });
-    };
-    document.getElementById('refresh').onclick = load;
-    restoreSession().then(load);
+    $('sessionButton').onclick = () => endSession();
+    window.addEventListener('hashchange', () => { if (!$('app').hidden) drawTabs(); });
+
+    (async function start() {
+      if (!state.token) return drawLogin();
+      const res = await request('GET', '/api/auth/me');
+      if (res.ok) {
+        state.me = res.data;
+        startApp();
+      } else if (res.status !== 401) {
+        // The 401 case has already gone back to the login screen.
+        state.notice = errorText(res);
+        drawLogin();
+      }
+    })();
   </script>
 </body>
 </html>

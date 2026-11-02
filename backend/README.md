@@ -114,7 +114,7 @@ With `Seed:Demo=true` (`Seed__Demo`, on in `docker-compose.yml`), an empty datab
 
 ## Development test page
 
-[`test-client/index.html`](../test-client/index.html) lives outside the API project and calls it over HTTP like a real client. It has forms for the auth, user, hotel and room endpoints, plus tables of what the logged-in role can see. Compose serves it on http://localhost:5500 (nginx, with the folder mounted so edits show on refresh); that origin is already in the API's CORS list. To serve it yourself instead:
+[`test-client/index.html`](../test-client/index.html) lives outside the API project and calls it over HTTP like a real client. It has a login screen with quick login for the seeded accounts, plus a tab each for hotels, rooms, users and your account. Lists have filters, paging and per-row actions, and a bar at the bottom logs every API call. Raw mode also shows actions your role cannot use and skips browser validation, to test the API's own 400, 401 and 403 responses. Compose serves it on http://localhost:5500 (nginx, with the folder mounted so edits show on refresh); that origin is already in the API's CORS list. To serve it yourself instead:
 
 ```powershell
 python -m http.server 5500 --directory ..\test-client
