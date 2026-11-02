@@ -94,3 +94,6 @@ app.MapRoomEndpoints();
 await app.InitializeDatabaseAsync();
 
 app.Run();
+
+// Lets the test project start the API.
+public partial class Program;
