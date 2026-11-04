@@ -22,6 +22,77 @@ namespace HotelReservation.Api.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("HotelReservation.Api.Features.Auth.PasswordResetToken", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("ExpiresAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("UsedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique();
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("PasswordResetTokens");
+                });
+
+            modelBuilder.Entity("HotelReservation.Api.Features.Auth.RefreshToken", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("ExpiresAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("RevokedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("UsedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique();
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("RefreshTokens");
+                });
+
             modelBuilder.Entity("HotelReservation.Api.Features.Hotels.Hotel", b =>
                 {
                     b.Property<int>("Id")
@@ -58,118 +129,6 @@ namespace HotelReservation.Api.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Hotels");
-                });
-
-            modelBuilder.Entity("HotelReservation.Api.Features.Payments.Payment", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<decimal>("Amount")
-                        .HasPrecision(10, 2)
-                        .HasColumnType("numeric(10,2)");
-
-                    b.Property<DateTime>("CreatedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Currency")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<DateTime?>("PaidAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Provider")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("ProviderTransactionId")
-                        .HasColumnType("text");
-
-                    b.Property<int>("ReservationId")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ReservationId");
-
-                    b.ToTable("Payments", t =>
-                        {
-                            t.HasCheckConstraint("CK_Payments_Amount", "\"Amount\" >= 0");
-
-                            t.HasCheckConstraint("CK_Payments_PaidAt", "(\"Status\" = 'Succeeded') = (\"PaidAtUtc\" IS NOT NULL)");
-
-                            t.HasCheckConstraint("CK_Payments_Status", "\"Status\" IN ('Pending', 'Succeeded', 'Failed')");
-                        });
-                });
-
-            modelBuilder.Entity("HotelReservation.Api.Features.Reservations.Reservation", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<DateOnly>("CheckInDate")
-                        .HasColumnType("date");
-
-                    b.Property<DateOnly>("CheckOutDate")
-                        .HasColumnType("date");
-
-                    b.Property<DateTime>("CreatedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("GuestCount")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("HotelId")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("RoomId")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<decimal>("TotalPrice")
-                        .HasPrecision(10, 2)
-                        .HasColumnType("numeric(10,2)");
-
-                    b.Property<DateTime>("UpdatedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("UserId")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("HotelId");
-
-                    b.HasIndex("RoomId");
-
-                    b.HasIndex("UserId");
-
-                    b.HasIndex("RoomId", "HotelId");
-
-                    b.ToTable("Reservations", t =>
-                        {
-                            t.HasCheckConstraint("CK_Reservations_Dates", "\"CheckInDate\" < \"CheckOutDate\"");
-
-                            t.HasCheckConstraint("CK_Reservations_GuestCount", "\"GuestCount\" > 0");
-
-                            t.HasCheckConstraint("CK_Reservations_Status", "\"Status\" IN ('Pending', 'Confirmed', 'Cancelled')");
-
-                            t.HasCheckConstraint("CK_Reservations_TotalPrice", "\"TotalPrice\" >= 0");
-                        });
                 });
 
             modelBuilder.Entity("HotelReservation.Api.Features.Rooms.Room", b =>
@@ -209,9 +168,6 @@ namespace HotelReservation.Api.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasAlternateKey("Id", "HotelId")
-                        .HasName("UQ_Rooms_Id_HotelId");
-
                     b.HasIndex("HotelId", "RoomNumber")
                         .IsUnique();
 
@@ -221,77 +177,6 @@ namespace HotelReservation.Api.Migrations
 
                             t.HasCheckConstraint("CK_Rooms_Price", "\"PricePerNight\" >= 0");
                         });
-                });
-
-            modelBuilder.Entity("HotelReservation.Api.Features.Users.PasswordResetToken", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("CreatedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime>("ExpiresAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("TokenHash")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<DateTime?>("UsedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("UserId")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("TokenHash")
-                        .IsUnique();
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("PasswordResetTokens");
-                });
-
-            modelBuilder.Entity("HotelReservation.Api.Features.Users.RefreshToken", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("CreatedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime>("ExpiresAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime?>("RevokedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("TokenHash")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<DateTime?>("UsedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("UserId")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("TokenHash")
-                        .IsUnique();
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("RefreshTokens");
                 });
 
             modelBuilder.Entity("HotelReservation.Api.Features.Users.User", b =>
@@ -342,34 +227,21 @@ namespace HotelReservation.Api.Migrations
                         });
                 });
 
-            modelBuilder.Entity("HotelReservation.Api.Features.Payments.Payment", b =>
+            modelBuilder.Entity("HotelReservation.Api.Features.Auth.PasswordResetToken", b =>
                 {
-                    b.HasOne("HotelReservation.Api.Features.Reservations.Reservation", null)
-                        .WithMany()
-                        .HasForeignKey("ReservationId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("HotelReservation.Api.Features.Reservations.Reservation", b =>
-                {
-                    b.HasOne("HotelReservation.Api.Features.Hotels.Hotel", null)
-                        .WithMany()
-                        .HasForeignKey("HotelId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
                     b.HasOne("HotelReservation.Api.Features.Users.User", null)
                         .WithMany()
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
 
-                    b.HasOne("HotelReservation.Api.Features.Rooms.Room", null)
+            modelBuilder.Entity("HotelReservation.Api.Features.Auth.RefreshToken", b =>
+                {
+                    b.HasOne("HotelReservation.Api.Features.Users.User", null)
                         .WithMany()
-                        .HasForeignKey("RoomId", "HotelId")
-                        .HasPrincipalKey("Id", "HotelId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 
@@ -382,24 +254,6 @@ namespace HotelReservation.Api.Migrations
                         .IsRequired();
 
                     b.Navigation("Hotel");
-                });
-
-            modelBuilder.Entity("HotelReservation.Api.Features.Users.PasswordResetToken", b =>
-                {
-                    b.HasOne("HotelReservation.Api.Features.Users.User", null)
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("HotelReservation.Api.Features.Users.RefreshToken", b =>
-                {
-                    b.HasOne("HotelReservation.Api.Features.Users.User", null)
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
                 });
 
             modelBuilder.Entity("HotelReservation.Api.Features.Hotels.Hotel", b =>

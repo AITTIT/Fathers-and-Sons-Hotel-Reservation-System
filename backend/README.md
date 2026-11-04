@@ -68,7 +68,7 @@ General conventions:
 
 ## Database
 
-Schema changes are EF Core migrations ([`Migrations/`](HotelReservation.Api/Migrations)), applied automatically at startup. The overlap exclusion constraint and capacity trigger from `InitialCreate` are dropped by `RemoveReservationRules` until the booking rules return. The design is in [`../Documentation/DatabaseSchema.md`](../Documentation/DatabaseSchema.md).
+Schema changes are EF Core migrations ([`Migrations/`](HotelReservation.Api/Migrations)), applied automatically at startup. The design is in [`../Documentation/DatabaseSchema.md`](../Documentation/DatabaseSchema.md).
 
 ```powershell
 cd backend\HotelReservation.Api
@@ -129,7 +129,7 @@ The API URL defaults to `http://localhost:5047`; override it with `?api=http://h
 
 ## Deferred work
 
-Reservations and payments are out of scope for now, so the API has no endpoints for them. The `Reservation` and `Payment` models and their tables remain, and deleting a room or hotel still checks them. Business logic belongs in this API when they return. The previous endpoints are in commit `60c4c19` (`ReservationEndpoints.cs`, `PaymentEndpoints.cs`) if you want to reuse them.
+Reservations and payments are out of scope for now, so the API has no endpoints, models or tables for them. Business logic belongs in this API when they return. The previous endpoints are in commit `60c4c19` (`ReservationEndpoints.cs`, `PaymentEndpoints.cs`), and the models and their `AppDbContext` configuration are in commit `6cda6cd`, if you want to reuse them.
 
 Reservations:
 
