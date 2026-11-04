@@ -74,12 +74,13 @@ Represents room bookings made by users.
 |---|---|---|---|
 | Id | INTEGER | Yes | Primary key |
 | UserId | INTEGER | Yes | FK -> Users.Id |
+| HotelId | INTEGER | Yes | FK -> Hotels.Id; must match the room's hotel |
 | RoomId | INTEGER | Yes | FK -> Rooms.Id |
 | CheckInDate | TEXT | Yes | Date (YYYY-MM-DD) |
 | CheckOutDate | TEXT | Yes | Date (YYYY-MM-DD) |
-| GuestCount | INTEGER | Yes | Must be <= Room.Capacity |
+| GuestCount | INTEGER | Yes | Must be > 0. Must be <= Room.Capacity (deferred) |
 | Status | TEXT | Yes | `Pending`, `Confirmed`, `Cancelled` |
-| TotalPrice | DECIMAL | Yes | Calculated total |
+| TotalPrice | DECIMAL | Yes | Calculated total (deferred) |
 | CreatedAtUtc | TEXT | Yes | ISO-8601 UTC |
 | UpdatedAtUtc | TEXT | Yes | ISO-8601 UTC |
 
@@ -138,8 +139,8 @@ Stores outgoing notification history for booking events.
 1. `Users.Email` unique.
 2. `Rooms` unique `(HotelId, RoomNumber)`.
 3. `Reservations.CheckInDate < Reservations.CheckOutDate`.
-4. Prevent overlapping reservations for the same room when status is active (`Pending` or `Confirmed`).
-5. `GuestCount > 0` and `GuestCount <= Rooms.Capacity`.
+4. Prevent overlapping reservations for the same room when status is active (`Pending` or `Confirmed`). *(Deferred: not currently enforced, see "Deferred work" in `backend/README.md`.)*
+5. `GuestCount > 0` and `GuestCount <= Rooms.Capacity`. *(The capacity check is deferred: not currently enforced.)*
 6. Monetary values (`PricePerNight`, `TotalPrice`, `Amount`) must be >= 0.
 
 ---
