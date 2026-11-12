@@ -6,12 +6,29 @@
 
     <!-- Note: For Android please see also Platforms\Android\Resources\values\colors.xml -->
 
-    <Color x:Key="Primary">#512BD4</Color>
-    <Color x:Key="PrimaryDark">#ac99ea</Color>
+    <Color x:Key="Primary">#0F5F6E</Color>
+    <Color x:Key="PrimaryDark">#5FB3C2</Color>
     <Color x:Key="PrimaryDarkText">#242424</Color>
-    <Color x:Key="Secondary">#DFD8F7</Color>
-    <Color x:Key="SecondaryDarkText">#9880e5</Color>
-    <Color x:Key="Tertiary">#2B0B98</Color>
+    <Color x:Key="Secondary">#D7E3E8</Color>
+    <Color x:Key="SecondaryDarkText">#5FB3C2</Color>
+    <Color x:Key="Tertiary">#122A33</Color>
+
+    <!-- Hotel Reservation design tokens -->
+    <Color x:Key="Sidebar">#122A33</Color>
+    <Color x:Key="SidebarActive">#1E4352</Color>
+    <Color x:Key="SidebarText">#B7C6CB</Color>
+    <Color x:Key="SidebarLine">#2A424B</Color>
+    <Color x:Key="Accent">#E9A23B</Color>
+    <Color x:Key="AccentText">#122A33</Color>
+    <Color x:Key="PageBackground">#F4F6F7</Color>
+    <Color x:Key="Surface">#FFFFFF</Color>
+    <Color x:Key="Ink">#122A33</Color>
+    <Color x:Key="Muted">#52646C</Color>
+    <Color x:Key="Line">#DDE3E6</Color>
+    <Color x:Key="FieldStroke">#C9D3D8</Color>
+    <Color x:Key="PhotoTeal">#D7E3E8</Color>
+    <Color x:Key="PhotoSand">#E8E0D0</Color>
+    <Color x:Key="PhotoLavender">#DDE1EE</Color>
 
     <Color x:Key="White">White</Color>
     <Color x:Key="Black">Black</Color>
