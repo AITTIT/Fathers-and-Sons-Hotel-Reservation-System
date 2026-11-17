@@ -1,5 +1,5 @@
-//HotelId on vierasavain, joka osoittaa, mille hotellille huone kuuluu. Hotel- ja Rooms-navigaatio-ominaisuudet kuvaavat 
-//samaa suhdetta C#-malleissa: yhdellä hotellilla voi olla useita huoneita, mutta huone kuuluu yhteen hotelliin.
+// HotelId is a foreign key indicating which hotel the room belongs to. The Hotel and Rooms navigation properties represent
+// the same relationship in the C# models: one hotel can have multiple rooms, but a room belongs to one hotel.
 using HotelReservation.Api.Features.Hotels;
 
 namespace HotelReservation.Api.Features.Rooms;
