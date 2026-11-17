@@ -5,4 +5,17 @@
     xmlns:maui="using:Microsoft.Maui"
     xmlns:local="using:HotelReservationSystem.WinUI">
 
+    <maui:MauiWinUIApplication.Resources>
+        <ResourceDictionary>
+            <!-- The sidebar items draw their own rounded highlight (see AppShell.xaml), so silence the
+                 default WinUI NavigationView selection/hover chrome, including the blue indicator bar. -->
+            <SolidColorBrush x:Key="NavigationViewSelectionIndicatorForeground" Color="Transparent" />
+            <SolidColorBrush x:Key="NavigationViewItemBackgroundSelected" Color="Transparent" />
+            <SolidColorBrush x:Key="NavigationViewItemBackgroundSelectedPointerOver" Color="Transparent" />
+            <SolidColorBrush x:Key="NavigationViewItemBackgroundSelectedPressed" Color="Transparent" />
+            <SolidColorBrush x:Key="NavigationViewItemBackgroundPointerOver" Color="Transparent" />
+            <SolidColorBrush x:Key="NavigationViewItemBackgroundPressed" Color="Transparent" />
+        </ResourceDictionary>
+    </maui:MauiWinUIApplication.Resources>
+
 </maui:MauiWinUIApplication>
