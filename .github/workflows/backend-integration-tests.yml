@@ -1,0 +1,65 @@
+name: Backend validation and image publishing
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  backend-validation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Build backend
+        run: dotnet build ./backend/HotelReservation.Api.Tests/HotelReservation.Api.Tests.csproj --configuration Release
+
+      - name: Run integration tests
+        run: dotnet test ./backend/HotelReservation.Api.Tests/HotelReservation.Api.Tests.csproj --configuration Release --no-build
+
+  publish-api-image:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: backend-validation
+    runs-on: ubuntu-latest
+    environment: docker-publish
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ secrets.DOCKERHUB_USERNAME }}/hotel-reservation-api
+          tags: |
+            type=raw,value=main
+            type=sha
+
+      - name: Build and push API image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend/HotelReservation.Api
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}

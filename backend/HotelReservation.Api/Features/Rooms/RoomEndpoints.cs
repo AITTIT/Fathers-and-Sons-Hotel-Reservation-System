@@ -14,6 +14,7 @@ public static class RoomEndpoints
     {
         var group = app.MapGroup("/api/rooms").WithTags("Rooms");
 
+        // GET ALL ROOMS
         // Inactive rooms are only visible to staff and admins.
         group.MapGet("/", async (int? hotelId, string? roomType, int? minCapacity, decimal? maxPrice, bool? includeInactive,
             int? page, int? pageSize, HttpContext http, AppDbContext db, CancellationToken ct) =>

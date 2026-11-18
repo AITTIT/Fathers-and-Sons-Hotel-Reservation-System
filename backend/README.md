@@ -38,6 +38,24 @@ docker compose down -v              # wipe the database; the next start re-creat
 
 Compose runs the API in Development mode with local-only settings (see `docker-compose.yml`). `GET /health` is a liveness check.
 
+## Integration tests
+
+The backend integration tests use `WebApplicationFactory` and Testcontainers. Each test run starts an isolated PostgreSQL 17 container, applies the EF Core migrations, runs the tests, and removes the temporary container afterward. The tests do not use or modify the PostgreSQL database from Docker Compose.
+
+Requires the .NET 9 SDK and Docker Desktop (or another running Docker daemon). From the repository root, run:
+
+```powershell
+dotnet test .\backend\HotelReservation.Api.Tests\HotelReservation.Api.Tests.csproj
+```
+
+To run only the room endpoint tests:
+
+```powershell
+dotnet test .\backend\HotelReservation.Api.Tests\HotelReservation.Api.Tests.csproj --filter "FullyQualifiedName~RoomEndpointTests"
+```
+
+Docker Compose does not need to be running for these tests. If Docker is unavailable, Testcontainers cannot start the temporary PostgreSQL database.
+
 To debug the API from the IDE instead, stop the container (both use port 5047) and run it yourself against the same database:
 
 ```powershell
@@ -153,10 +171,9 @@ Payments:
 - A production profile (no dev settings, HTTPS reverse proxy, unpublished Postgres port)
 - Payment provider and refunds (simulated?)
 - Email delivery for password reset
-- Automated tests
 - Notifications table (optional in the schema doc)
 
 ## Known issues
 - Everything is Development-only. The credentials, the dev reset token and the docs are for local use, and Postgres is published on 5432. It's fine for development and not for deployment.
 - Password reset only works in Development, because it returns a dev token instead of sending email.
-- No automated tests and no CI yet.
+- The GitHub Actions workflow runs the backend integration tests on every push; pull-request-specific checks are not configured yet.
