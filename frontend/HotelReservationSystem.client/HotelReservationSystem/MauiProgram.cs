@@ -1,4 +1,5 @@
-﻿using HotelReservationSystem.Features.RoomSearch;
+﻿using HotelReservationSystem.Features.Auth;
+using HotelReservationSystem.Features.RoomSearch;
 using HotelReservationSystem.Features.Rooms;
 using Microsoft.Extensions.Logging;
 
@@ -19,6 +20,11 @@ namespace HotelReservationSystem
 
             // Services (swap MockRoomService for the API-backed implementation later)
             builder.Services.AddSingleton<IRoomService, MockRoomService>();
+
+            // Auth (swap MockAuthService for the API-backed implementation later)
+            builder.Services.AddSingleton<IAuthService, MockAuthService>();
+            builder.Services.AddTransient<LoginViewModel>();
+            builder.Services.AddTransient<LoginPage>();
 
             // Room search feature
             builder.Services.AddTransient<RoomSearchViewModel>();

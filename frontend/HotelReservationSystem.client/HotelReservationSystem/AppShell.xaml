@@ -69,10 +69,10 @@
     <Shell.FlyoutFooter>
         <VerticalStackLayout Padding="22,0,22,22" Spacing="14">
             <BoxView HeightRequest="1" Color="{StaticResource SidebarLine}" />
-            <Label Text="Browsing as guest" TextColor="{StaticResource SidebarText}" FontSize="14" />
-            <Button Text="Sign in or register" BackgroundColor="{StaticResource Accent}"
+            <Label x:Name="UserLabel" Text="Browsing as guest" TextColor="{StaticResource SidebarText}" FontSize="14" />
+            <Button x:Name="AuthButton" Text="Sign in or register" BackgroundColor="{StaticResource Accent}"
                     TextColor="{StaticResource AccentText}" FontFamily="OpenSansSemibold"
-                    FontSize="16" CornerRadius="10" HeightRequest="48" />
+                    FontSize="16" CornerRadius="10" HeightRequest="48" Clicked="OnAuthButtonClicked" />
         </VerticalStackLayout>
     </Shell.FlyoutFooter>
 
