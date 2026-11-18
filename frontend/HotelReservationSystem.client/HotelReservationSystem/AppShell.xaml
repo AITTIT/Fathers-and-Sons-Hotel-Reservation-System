@@ -4,6 +4,7 @@
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     xmlns:search="clr-namespace:HotelReservationSystem.Features.RoomSearch"
+    xmlns:staff="clr-namespace:HotelReservationSystem.Features.Staff"
     xmlns:placeholders="clr-namespace:HotelReservationSystem.Features.Placeholders"
     Title="Hotel Reservation"
     Shell.NavBarIsVisible="False"
@@ -54,15 +55,28 @@
         </DataTemplate>
     </Shell.ItemTemplate>
 
-    <FlyoutItem Title="Find rooms" Icon="icon_search.png">
+    <FlyoutItem x:Name="StaffDashboardItem" Title="Dashboard" Icon="icon_calendar.png" IsVisible="False">
+        <ShellContent ContentTemplate="{DataTemplate staff:StaffDashboardPage}" Route="staff" />
+    </FlyoutItem>
+    <FlyoutItem x:Name="StaffReservationsItem" Title="Reservations" Icon="icon_bed.png" IsVisible="False">
+        <ShellContent ContentTemplate="{DataTemplate placeholders:StaffReservationsPage}" Route="staffreservations" />
+    </FlyoutItem>
+    <FlyoutItem x:Name="StaffRoomsItem" Title="Rooms" Icon="icon_bed.png" IsVisible="False">
+        <ShellContent ContentTemplate="{DataTemplate placeholders:StaffRoomsPage}" Route="staffrooms" />
+    </FlyoutItem>
+    <FlyoutItem x:Name="StaffCustomersItem" Title="Customers" Icon="icon_globe.png" IsVisible="False">
+        <ShellContent ContentTemplate="{DataTemplate placeholders:StaffCustomersPage}" Route="staffcustomers" />
+    </FlyoutItem>
+
+    <FlyoutItem x:Name="CustomerRoomsItem" Title="Find rooms" Icon="icon_search.png">
         <ShellContent ContentTemplate="{DataTemplate search:RoomSearchPage}" Route="rooms" />
     </FlyoutItem>
 
-    <FlyoutItem Title="My bookings" Icon="icon_calendar.png">
+    <FlyoutItem x:Name="CustomerBookingsItem" Title="My bookings" Icon="icon_calendar.png">
         <ShellContent ContentTemplate="{DataTemplate placeholders:MyBookingsPage}" Route="bookings" />
     </FlyoutItem>
 
-    <FlyoutItem Title="Help &amp; FAQ" Icon="icon_help.png">
+    <FlyoutItem x:Name="CustomerHelpItem" Title="Help &amp; FAQ" Icon="icon_help.png">
         <ShellContent ContentTemplate="{DataTemplate placeholders:HelpPage}" Route="help" />
     </FlyoutItem>
 
