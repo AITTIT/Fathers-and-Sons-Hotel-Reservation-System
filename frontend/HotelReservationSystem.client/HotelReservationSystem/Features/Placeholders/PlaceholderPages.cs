@@ -37,3 +37,9 @@ public abstract class PlaceholderPage : ContentPage
 public sealed class MyBookingsPage() : PlaceholderPage("My bookings");
 
 public sealed class HelpPage() : PlaceholderPage("Help & FAQ");
+
+public sealed class StaffReservationsPage() : PlaceholderPage("Reservations");
+
+public sealed class StaffRoomsPage() : PlaceholderPage("Rooms");
+
+public sealed class StaffCustomersPage() : PlaceholderPage("Customers");

@@ -1,6 +1,7 @@
 ﻿using HotelReservationSystem.Features.Auth;
 using HotelReservationSystem.Features.RoomSearch;
 using HotelReservationSystem.Features.Rooms;
+using HotelReservationSystem.Features.Staff;
 using Microsoft.Extensions.Logging;
 
 namespace HotelReservationSystem
@@ -29,6 +30,10 @@ namespace HotelReservationSystem
             // Room search feature
             builder.Services.AddTransient<RoomSearchViewModel>();
             builder.Services.AddTransient<RoomSearchPage>();
+
+            // Staff dashboard
+            builder.Services.AddTransient<StaffDashboardViewModel>();
+            builder.Services.AddTransient<StaffDashboardPage>();
 
 #if WINDOWS
             // Remove the native WinUI input chrome so our rounded Border fields are the only outline.
