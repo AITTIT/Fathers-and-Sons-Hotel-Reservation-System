@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:HotelReservationSystem.Features.Auth"
+             x:Class="HotelReservationSystem.Features.Auth.LoginPage"
+             x:DataType="vm:LoginViewModel"
+             Title="Sign in"
+             Shell.NavBarIsVisible="False"
+             Shell.FlyoutBehavior="Disabled"
+             BackgroundColor="{StaticResource PageBackground}">
+
+    <ContentPage.Resources>
+        <Style x:Key="FieldBorder" TargetType="Border">
+            <Setter Property="Stroke" Value="{StaticResource FieldStroke}" />
+            <Setter Property="StrokeShape" Value="RoundRectangle 10" />
+            <Setter Property="StrokeThickness" Value="1" />
+            <Setter Property="BackgroundColor" Value="{StaticResource Surface}" />
+            <Setter Property="HeightRequest" Value="48" />
+            <Setter Property="Padding" Value="12,0" />
+        </Style>
+
+        <Style x:Key="FieldLabel" TargetType="Label">
+            <Setter Property="TextColor" Value="{StaticResource Ink}" />
+            <Setter Property="FontFamily" Value="OpenSansSemibold" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="Margin" Value="0,0,0,6" />
+        </Style>
+    </ContentPage.Resources>
+
+    <ScrollView>
+        <VerticalStackLayout VerticalOptions="Center" HorizontalOptions="Center"
+                             WidthRequest="440" Padding="20,40" Spacing="24">
+
+            <!-- Brand -->
+            <HorizontalStackLayout Spacing="12" HorizontalOptions="Center">
+                <Border WidthRequest="40" HeightRequest="40" StrokeThickness="0"
+                        StrokeShape="RoundRectangle 10" BackgroundColor="{StaticResource Accent}">
+                    <Label Text="H" TextColor="{StaticResource AccentText}" FontFamily="OpenSansSemibold"
+                           FontSize="20" HorizontalOptions="Center" VerticalOptions="Center" />
+                </Border>
+                <Label Text="Hotel Reservation" TextColor="{StaticResource Ink}"
+                       FontFamily="OpenSansSemibold" FontSize="18" VerticalOptions="Center" />
+            </HorizontalStackLayout>
+
+            <Border StrokeShape="RoundRectangle 20" Stroke="{StaticResource Line}" StrokeThickness="1"
+                    BackgroundColor="{StaticResource Surface}" Padding="28">
+                <Border.Shadow>
+                    <Shadow Brush="#122A33" Opacity="0.08" Radius="24" Offset="0,8" />
+                </Border.Shadow>
+
+                <VerticalStackLayout Spacing="18">
+                    <VerticalStackLayout Spacing="6">
+                        <Label Text="{Binding Heading}" TextColor="{StaticResource Ink}"
+                               FontFamily="OpenSansSemibold" FontSize="28"
+                               SemanticProperties.HeadingLevel="Level1" />
+                        <Label Text="{Binding Subheading}" TextColor="{StaticResource Muted}" FontSize="15" />
+                    </VerticalStackLayout>
+
+                    <!-- Registration-only fields -->
+                    <VerticalStackLayout Spacing="18" IsVisible="{Binding IsRegisterMode}">
+                        <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+                            <VerticalStackLayout>
+                                <Label Text="First name" Style="{StaticResource FieldLabel}" />
+                                <Border Style="{StaticResource FieldBorder}">
+                                    <Entry Text="{Binding FirstName}" TextColor="{StaticResource Ink}"
+                                           VerticalOptions="Center" SemanticProperties.Description="First name" />
+                                </Border>
+                            </VerticalStackLayout>
+                            <VerticalStackLayout Grid.Column="1">
+                                <Label Text="Last name" Style="{StaticResource FieldLabel}" />
+                                <Border Style="{StaticResource FieldBorder}">
+                                    <Entry Text="{Binding LastName}" TextColor="{StaticResource Ink}"
+                                           VerticalOptions="Center" SemanticProperties.Description="Last name" />
+                                </Border>
+                            </VerticalStackLayout>
+                        </Grid>
+                        <VerticalStackLayout>
+                            <Label Text="Phone (optional)" Style="{StaticResource FieldLabel}" />
+                            <Border Style="{StaticResource FieldBorder}">
+                                <Entry Text="{Binding Phone}" Keyboard="Telephone" TextColor="{StaticResource Ink}"
+                                       VerticalOptions="Center" SemanticProperties.Description="Phone number" />
+                            </Border>
+                        </VerticalStackLayout>
+                    </VerticalStackLayout>
+
+                    <VerticalStackLayout>
+                        <Label Text="Email" Style="{StaticResource FieldLabel}" />
+                        <Border Style="{StaticResource FieldBorder}">
+                            <Entry Text="{Binding Email}" Keyboard="Email" Placeholder="you@example.com"
+                                   TextColor="{StaticResource Ink}" VerticalOptions="Center"
+                                   SemanticProperties.Description="Email" />
+                        </Border>
+                    </VerticalStackLayout>
+
+                    <VerticalStackLayout>
+                        <Label Text="Password" Style="{StaticResource FieldLabel}" />
+                        <Border Style="{StaticResource FieldBorder}">
+                            <Entry Text="{Binding Password}" IsPassword="True"
+                                   TextColor="{StaticResource Ink}" VerticalOptions="Center"
+                                   ReturnCommand="{Binding SubmitCommand}"
+                                   SemanticProperties.Description="Password" />
+                        </Border>
+                    </VerticalStackLayout>
+
+                    <Label Text="{Binding Error}" IsVisible="{Binding HasError}"
+                           TextColor="#B3261E" FontSize="14"
+                           SemanticProperties.Description="Error message" />
+
+                    <Button Text="{Binding SubmitText}" Command="{Binding SubmitCommand}"
+                            HeightRequest="48" CornerRadius="10"
+                            BackgroundColor="{StaticResource Primary}" TextColor="White"
+                            FontFamily="OpenSansSemibold" FontSize="16" />
+
+                    <HorizontalStackLayout HorizontalOptions="Center" Spacing="6">
+                        <Label Text="{Binding ToggleHint}" TextColor="{StaticResource Muted}" />
+                        <Label Text="{Binding ToggleText}" TextColor="{StaticResource Primary}"
+                               FontFamily="OpenSansSemibold" TextDecorations="Underline">
+                            <Label.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding ToggleModeCommand}" />
+                            </Label.GestureRecognizers>
+                        </Label>
+                    </HorizontalStackLayout>
+                </VerticalStackLayout>
+            </Border>
+
+            <Label Text="Continue as guest" TextColor="{StaticResource Muted}" HorizontalOptions="Center"
+                   TextDecorations="Underline">
+                <Label.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnContinueAsGuest" />
+                </Label.GestureRecognizers>
+            </Label>
+
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>
