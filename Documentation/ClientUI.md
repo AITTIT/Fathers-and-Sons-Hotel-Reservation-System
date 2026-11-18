@@ -325,6 +325,8 @@ The fields match the `Reservations` table. The availability check warns before a
 │      Administrator ⇥│                                                        │
 └─────────────────────┴────────────────────────────────────────────────────────┘
 ```
+- Admin can manage accounts like remove, reset, add exc.
+- Admin can add/remove rooms/hotels to the site
 
 ---
 
