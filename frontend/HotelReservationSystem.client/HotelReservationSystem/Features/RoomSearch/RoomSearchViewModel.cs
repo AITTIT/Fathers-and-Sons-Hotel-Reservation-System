@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using HotelReservationSystem.Features.Rooms;
-using HotelReservationSystem.Infrastructure;
 
 namespace HotelReservationSystem.Features.RoomSearch;
 
@@ -18,7 +19,7 @@ public sealed class RoomSearchViewModel : ObservableObject
     public RoomSearchViewModel(IRoomService rooms)
     {
         _rooms = rooms;
-        SearchCommand = new Command(OnSearch, () => !string.IsNullOrWhiteSpace(City));
+        SearchCommand = new RelayCommand(OnSearch, () => !string.IsNullOrWhiteSpace(City));
     }
 
     /// <summary>Raised when the user submits the form. The results screen (C2) will subscribe to this later.</summary>
@@ -29,7 +30,7 @@ public sealed class RoomSearchViewModel : ObservableObject
 
     public ObservableCollection<RoomCardViewModel> RecommendedRooms { get; } = [];
 
-    public Command SearchCommand { get; }
+    public RelayCommand SearchCommand { get; }
 
     public string City
     {
@@ -37,7 +38,7 @@ public sealed class RoomSearchViewModel : ObservableObject
         set
         {
             if (SetProperty(ref _city, value))
-                SearchCommand.ChangeCanExecute();
+                SearchCommand.NotifyCanExecuteChanged();
         }
     }
 
