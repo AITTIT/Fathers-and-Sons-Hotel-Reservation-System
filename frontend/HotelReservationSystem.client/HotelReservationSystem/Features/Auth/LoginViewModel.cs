@@ -1,5 +1,6 @@
 using System.Net.Mail;
-using HotelReservationSystem.Infrastructure;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 
 namespace HotelReservationSystem.Features.Auth;
 
@@ -20,16 +21,16 @@ public sealed class LoginViewModel : ObservableObject
     public LoginViewModel(IAuthService auth)
     {
         _auth = auth;
-        SubmitCommand = new Command(async () => await SubmitAsync(), () => !IsBusy);
-        ToggleModeCommand = new Command(() => IsRegisterMode = !IsRegisterMode);
+        SubmitCommand = new AsyncRelayCommand(SubmitAsync, () => !IsBusy);
+        ToggleModeCommand = new RelayCommand(() => IsRegisterMode = !IsRegisterMode);
     }
 
     /// <summary>Raised after a successful sign in / registration so the page can close itself.</summary>
     public event EventHandler? Completed;
 
-    public Command SubmitCommand { get; }
+    public AsyncRelayCommand SubmitCommand { get; }
 
-    public Command ToggleModeCommand { get; }
+    public RelayCommand ToggleModeCommand { get; }
 
     public bool IsRegisterMode
     {
@@ -69,7 +70,7 @@ public sealed class LoginViewModel : ObservableObject
                 return;
 
             OnPropertyChanged(nameof(SubmitText));
-            SubmitCommand.ChangeCanExecute();
+            SubmitCommand.NotifyCanExecuteChanged();
         }
     }
 

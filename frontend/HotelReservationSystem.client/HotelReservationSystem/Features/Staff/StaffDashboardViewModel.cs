@@ -1,5 +1,5 @@
+using CommunityToolkit.Mvvm.ComponentModel;
 using HotelReservationSystem.Features.Auth;
-using HotelReservationSystem.Infrastructure;
 
 namespace HotelReservationSystem.Features.Staff;
 
