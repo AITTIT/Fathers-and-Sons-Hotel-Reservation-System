@@ -1,7 +1,11 @@
 namespace HotelReservationSystem.Features.Auth;
 
-public sealed record SignedInUser(string Email, string FirstName, string LastName)
+public enum UserRole { Customer, Staff, Admin }
+
+public sealed record SignedInUser(string Email, string FirstName, string LastName, UserRole Role = UserRole.Customer)
 {
+    public bool IsStaff => Role == UserRole.Staff;
+
     public string DisplayName => $"{FirstName} {LastName}".Trim();
 }
 

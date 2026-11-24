@@ -1,12 +1,13 @@
 namespace HotelReservationSystem.Features.Auth;
 
-/// <summary>In-memory stand-in until the API client exists. Demo login: guest@example.com / Password1</summary>
+/// <summary>In-memory stand-in until the API client exists. Demo logins: guest@example.com / Password1, staff@example.com / Password1</summary>
 public sealed class MockAuthService : IAuthService
 {
     private readonly Dictionary<string, (string Password, SignedInUser User)> _users =
         new(StringComparer.OrdinalIgnoreCase)
         {
             ["guest@example.com"] = ("Password1", new SignedInUser("guest@example.com", "Demo", "Guest")),
+            ["staff@example.com"] = ("Password1", new SignedInUser("staff@example.com", "Juha", "Laine", UserRole.Staff)),
         };
 
     public SignedInUser? CurrentUser { get; private set; }
