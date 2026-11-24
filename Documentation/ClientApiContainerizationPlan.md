@@ -1,168 +1,94 @@
-# MAUI + API + Docker Containerization Plan
+# MAUI Client, API, and Container Architecture
 
-## 1. Agreed Direction
+## Current choices
 
-This plan is based on the current decisions:
+- **Client:** .NET MAUI, organized around feature-specific Views, ViewModels, models, and service abstractions.
+- **Backend:** ASP.NET Core Web API on .NET 9. Business rules and persistence belong in the API, not the MAUI client.
+- **Persistence:** PostgreSQL 17, accessed by EF Core through Npgsql. The API applies migrations at startup.
+- **Local orchestration:** Docker Compose starts PostgreSQL, the API, and a small Nginx-hosted browser test client. PostgreSQL data is stored in the `postgres-data` named volume.
+- **Authentication:** The API implements JWT access tokens, rotating refresh tokens, password reset tokens, and Customer/Staff/Admin authorization. The current MAUI authentication service is still an in-memory mock.
 
-- Scope: **Backend skeleton first**
-- Auth (initial): **No auth yet**
-- Local container orchestration: **Docker Compose**
-- Database persistence: **SQLite with named Docker volume**
-- Shared contracts: **Shared class library**
+SQLite is not used by the current application.
 
----
-
-## 2. Target Architecture
+## Architecture
 
 ```text
-MAUI Client (MVVM)
-   |
-   | HTTP (JSON)
-   v
-ASP.NET Core Web API (Docker container)
-   |
-   | EF Core provider / data layer
-   v
-SQLite database file (stored on Docker named volume)
+.NET MAUI client
+  Views / ViewModels / feature service abstractions
+  Current auth and room services are in-memory mocks
+                |
+                | HTTP + JSON (target integration)
+                v
+ASP.NET Core Web API
+  Authentication, authorization, validation, hotel/room/user endpoints
+  EF Core migrations and data access
+                |
+                | Npgsql
+                v
+PostgreSQL 17
+  Docker Compose service; postgres-data named volume
 ```
 
-### MVVM impact
+The API is client-agnostic: browser and MAUI clients use the same HTTP endpoints. The API currently exposes health, authentication, user, hotel, and room routes. Reservations, payments, and notification delivery are not implemented.
 
-MVVM remains valid and recommended:
+## Project boundaries and integration status
 
-- **Views + ViewModels stay in MAUI client**
-- **Domain/application logic and persistence move to API**
-- MAUI ViewModels call API services (abstractions), not direct DB/repository classes
-- API becomes the boundary for validation, business rules, and data ownership
+### MAUI client
 
----
+- Keep XAML pages and presentation state in the client.
+- ViewModels depend on feature service interfaces, not on EF Core or database classes.
+- `MockAuthService` and `MockRoomService` currently provide in-memory behavior; they are registered by `MauiProgram`.
+- Replace those mock implementations with API-backed services when client/server integration is implemented.
+- Several destinations, including bookings and staff reservations/rooms/customers, are placeholder pages.
 
-## 3. Solution/Project Changes
+### API and persistence
 
-## 3.1 Add projects
+- API endpoints enforce validation and role-based access.
+- EF Core entities, `AppDbContext`, and migrations are owned by `backend/HotelReservation.Api`.
+- PostgreSQL connection configuration is supplied through `ConnectionStrings:Default`.
+- The Compose API waits for PostgreSQL health and applies migrations during startup.
 
-1. Keep existing MAUI project as client application.
-2. Add new **ASP.NET Core Web API** project (backend).
-3. Add new **Shared.Contracts** class library for DTOs and request/response models.
-4. Add new **Infrastructure/Data** backend layer (or folders) for EF Core + SQLite context/migrations.
+### Shared contracts
 
-## 3.2 Define boundaries
+A shared contracts library is a target boundary for request/response DTOs, but no such project is present yet. At present, API contract records are defined in the API feature folders and client-facing types are defined in the MAUI project. Introduce a shared library as part of the future API-backed client integration rather than assuming it is already in use.
 
-- MAUI project:
-  - ViewModels
-  - UI state
-  - API client services
-  - no direct EF/SQLite references
-- API project:
-  - Controllers/endpoints
-  - Application services/use cases
-  - Validation
-  - Data access/repositories
-- Shared.Contracts:
-  - DTOs used by both MAUI and API
-  - No UI-specific types
-  - No persistence-specific entities
+## Local development
 
----
+From `backend`:
 
-## 4. Containerization Changes
+```powershell
+docker compose up -d --build
+```
 
-1. Add `Dockerfile` for API project.
-2. Add `docker-compose.yml` with services:
-   - `api`
-   - `sqlite` volume mount for database file persistence
-3. Add environment variables for API:
-   - ASP.NET Core environment
-   - Connection string path
-4. Add `.dockerignore` for API project.
-5. Add initialization strategy for database:
-   - apply migrations at startup (development) or via explicit migration command.
+The Compose stack exposes:
 
----
+| Service | Local address |
+|---|---|
+| API | `http://localhost:5047` |
+| Interactive API docs (Development only) | `http://localhost:5047/scalar/v1` |
+| OpenAPI document (Development only) | `http://localhost:5047/openapi/v1.json` |
+| Browser test client | `http://localhost:5500` |
+| PostgreSQL | `localhost:5432` |
 
-## 5. Backend Skeleton (First Milestone)
+Development Compose values, including credentials and signing key, are for local use only. Do not reuse them outside development. `docker compose down -v` removes the named database volume and permanently deletes its data.
 
-1. Create minimal API structure:
-   - Health endpoint (`/health`)
-   - One sample feature endpoint (e.g., rooms list placeholder)
-2. Configure EF Core with SQLite.
-3. Add DbContext and initial migration.
-4. Ensure API starts inside Docker and can access persistent SQLite file.
-5. Verify MAUI client can call backend endpoint via configurable base URL.
+The MAUI client does not yet call this Compose API. The browser test client exercises the HTTP API while the MAUI app continues to use its mock services.
 
----
+For backend setup, API behavior, test commands, configuration, migration commands, and known limitations, see [the backend README](../backend/README.md).
 
-## 6. MAUI Client Refactor Plan
+## Current implementation versus remaining work
 
-1. Introduce API service abstractions in MAUI (per feature).
-2. Replace direct local data access with HTTP-based implementations.
-3. Keep ViewModels unchanged where possible except dependency swap.
-4. Add environment-aware API base URL configuration for local/dev.
-5. Add resilient error handling for API/network failures in ViewModels.
+Implemented:
 
----
+- ASP.NET Core API and PostgreSQL Compose service.
+- PostgreSQL persistence, EF Core migrations, startup migration application, and development data seeding.
+- API authentication/authorization and user, hotel, and room endpoints.
+- MAUI room-search and staff-dashboard screens, plus mock sign-in/registration.
 
-## 7. Tooling to Install
+Remaining:
 
-## Required
-
-- **.NET SDK 9.x** (matching current target)
-- **Docker Desktop** (or Docker Engine + Compose plugin)
-- **Visual Studio 2022** with:
-  - .NET MAUI workload
-  - ASP.NET and web development workload
-  - Container Tools
-
-## Recommended CLI verification
-
-- `dotnet --version`
-- `docker --version`
-- `docker compose version`
-
-## NuGet packages (API side)
-
-- `Microsoft.EntityFrameworkCore`
-- `Microsoft.EntityFrameworkCore.Sqlite`
-- `Microsoft.EntityFrameworkCore.Design`
-- `Swashbuckle.AspNetCore` (recommended for API docs/testing)
-
----
-
-## 8. Documentation Updates Needed
-
-1. Update architecture section in `Documentation/SoftwareSpec.md`:
-   - MAUI client + API + SQLite container split
-   - responsibilities per layer
-2. Update backlog in `Documentation/GitHubTasks.md`:
-   - add epic/tasks for API project bootstrap
-   - add epic/tasks for containerization and MAUI-to-API refactor
-3. Add setup guide file:
-   - local development prerequisites
-   - how to run API + DB with Docker Compose
-   - how to run MAUI client against local API
-4. Add deployment notes:
-   - environment variables
-   - persistent volume requirements
-   - migration strategy
-
----
-
-## 9. Proposed Implementation Sequence
-
-1. Add API + Shared.Contracts projects to solution.
-2. Add API Dockerfile and docker-compose configuration.
-3. Add EF Core SQLite setup and first migration.
-4. Expose health + sample endpoint.
-5. Wire MAUI client to call API through service abstraction.
-6. Move one feature end-to-end as pilot.
-7. Update docs and backlog after pilot validation.
-
----
-
-## 10. Exit Criteria for Phase 1
-
-- API runs in container via Docker Compose.
-- SQLite data persists across container restarts via named volume.
-- MAUI app successfully calls at least one API endpoint.
-- Shared.Contracts is used by both client and backend.
-- Documentation is updated for setup and architecture.
+- Wire MAUI auth and room services to API-backed implementations.
+- Add the shared contracts project and use its DTOs across the client/API boundary.
+- Implement reservation and payment models/endpoints and corresponding client flows.
+- Replace mock staff dashboard data and placeholder pages with API-backed screens.
+- Add a production deployment profile and production-safe secrets, HTTPS, and database exposure settings.
