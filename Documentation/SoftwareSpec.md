@@ -92,7 +92,7 @@
 - Visa
 - Other supported payment services
 
-(Payment functionality will be mocked in some way when creating the first version.)
+Payment processing is not implemented in the current system. A mock provider may be used for a future booking-flow prototype before integrating a real provider.
 
  ### Notifications
 
@@ -270,37 +270,41 @@
 
 ---
 
- ## 2.9 Architecture and Deployment Model
+## 2.9 Architecture and Deployment Model
 
- The application shall be split into separate client and backend components:
+ The selected architecture separates the client from the backend:
 
- - **MAUI Client Application** (presentation and client-side interaction)
-- **ASP.NET Core Web API** (business/application services and data access boundary)
-- **SQLite database file persisted through Docker named volume**
+ - **.NET MAUI client** for presentation and client-side interaction, using MVVM.
+ - **ASP.NET Core Web API (.NET 9)** for authentication, authorization, validation, business rules, and data access.
+ - **PostgreSQL 17** for persistence, accessed through EF Core and Npgsql.
 
- The API and database are intended to run in Docker-based environments, especially for local development using Docker Compose.
+ The local Docker Compose stack runs PostgreSQL, the API, and an Nginx-hosted browser test client. PostgreSQL data persists in the `postgres-data` named volume. SQLite is not used.
 
- ### MVVM in the Split Architecture
+### MVVM in the Split Architecture
 
- MVVM remains the client architecture pattern:
+ MVVM is the client architecture pattern:
 
- - **Views** and **ViewModels** stay in the MAUI project.
+- **Views** and **ViewModels** stay in the MAUI project.
 - ViewModels call service abstractions that use HTTP clients.
 - ViewModels must not directly access persistence or infrastructure implementations.
-- Backend-side business rules, validation, and persistence are implemented in the API layer.
+- Backend-side business rules, validation, and persistence belong in the API layer.
+- The MAUI app currently registers in-memory mock auth and room services; API-backed client services are not yet wired up.
 
- ### Shared Contracts
+### Shared Contracts
 
- The solution should include a shared class library for API request/response contracts (DTOs) used by both MAUI and API projects.
+ The target boundary is a shared class library for API request/response DTOs. No shared contracts project exists yet: API records are currently defined in backend feature folders and client types in the MAUI project.
 
- ### Initial Delivery Scope
+### Current implementation
 
- The first implementation milestone focuses on a backend skeleton:
+ The backend is beyond the original unauthenticated skeleton milestone:
 
- - Basic API project structure
-- Containerized API runtime
-- SQLite persistence wiring with named volume
-- No authentication in the initial backend skeleton milestone
+ - PostgreSQL schema managed by EF Core migrations, applied at API startup.
+ - API endpoints for registration/login, token refresh/logout, password reset, users, hotels, and rooms.
+ - JWT authentication and Customer/Staff/Admin authorization for protected operations.
+ - Development-only admin/demo-data seeding and interactive API documentation.
+ - Integration tests use an isolated PostgreSQL 17 Testcontainers instance.
+
+ The MAUI client remains an early prototype. Room search and the staff dashboard are present but use mock data; sign-in/registration use an in-memory mock. Booking, help, staff reservations/rooms/customers, payment, and notification flows are not implemented. See [the container and client architecture document](ClientApiContainerizationPlan.md) and [the backend README](../backend/README.md) for operational details.
 
 ---
 
@@ -337,7 +341,7 @@
 
  ### Non-Functional Requirements
 
- - Passwords must be encrypted.
+ - Passwords must be stored as secure hashes, never as plaintext or reversible encryption.
 - Login should take less than **2 seconds**.
 - The system must comply with GDPR.
 
@@ -559,34 +563,74 @@
 
  The schema is intentionally minimal to support backend API development and unit testing before full Docker and database deployment tasks are completed.
 
- ## Core Tables
+## Core Tables
 
- - `Users`
-- `Hotels`
-- `Rooms`
-- `Reservations`
-- `Payments`
-- `Notifications` (optional in first backend skeleton)
+```mermaid
+classDiagram
 
- ## Core Relationships
+    class User {
+        +Id: int
+        +Email: string
+        +PasswordHash: string
+        +FirstName: string
+        +LastName: string
+        +Phone: string?
+        +Role: string
+        +CreatedAtUtc: DateTime
+        +UpdatedAtUtc: DateTime
+    }
 
- - One hotel has many rooms.
-- One user has many reservations.
-- One room has many reservations.
-- One reservation has many payments.
-- One user has many notifications.
+    class Hotel {
+        +Id: int
+        +Name: string
+        +AddressLine1: string
+        +City: string
+        +Country: string
+        +PostalCode: string?
+        +CreatedAtUtc: DateTime
+        +UpdatedAtUtc: DateTime
+    }
 
- ## Key Constraints
+    class Room {
+        +Id: int
+        +HotelId: int
+        +RoomNumber: string
+        +RoomType: string
+        +Capacity: int
+        +PricePerNight: decimal
+        +IsActive: bool
+        +CreatedAtUtc: DateTime
+        +UpdatedAtUtc: DateTime
+    }
 
- - User email must be unique.
-- Room number must be unique per hotel.
-- Check-in date must be before check-out date.
-- Overlapping active reservations for the same room are not allowed.
-- Guest count must be positive and within room capacity.
+    class Reservation {
+        +Id: int
+        +UserId: int
+        +HotelId: int
+        +RoomId: int
+        +CheckInDate: DateOnly
+        +CheckOutDate: DateOnly
+        +GuestCount: int
+        +Status: string
+        +TotalPrice: decimal
+        +CreatedAtUtc: DateTime
+        +UpdatedAtUtc: DateTime
+    }
 
- This structure supports the split architecture (MAUI client + ASP.NET Core API) and allows persistence implementation to be added incrementally.
+```
+
+## Current Key Constraints
+
+- User email must be unique.
+- User role is limited to `Customer`, `Staff`, or `Admin`.
+- Room number must be unique within its hotel.
+- Room capacity must be positive and room price must be non-negative.
+
+ Reservations, payments, and notifications are planned product capabilities, not current tables or API features. Booking overlap, date, and guest-count constraints cannot be claimed as enforced until reservation support is implemented.
 
 ## Diagrams
+
+The following diagrams represent intended user flows and requirements; the reservation flow is not implemented in the current application.
 
 ![](Images/UseCaseDiag1.png)
 

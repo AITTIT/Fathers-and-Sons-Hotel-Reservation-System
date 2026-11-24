@@ -1,157 +1,130 @@
-# Hotel Reservation System — Simple Database Schema (Draft)
+# Hotel Reservation System — Current Database Schema
 
-## Goal
+## Database and schema ownership
 
-This schema is intentionally minimal so backend API development can proceed before Docker and full database implementation.
+The backend uses PostgreSQL with Entity Framework Core and the Npgsql provider. The API project owns the EF Core model and migrations; migrations are applied automatically when the API starts. The development Docker Compose setup uses PostgreSQL 17 and persists data in the `postgres-data` named volume.
 
-## Design principles
+This document describes the schema currently represented by `backend/HotelReservation.Api/Data/AppDbContext.cs` and its migrations. It is not a proposed future booking schema.
 
-- Keep only core entities needed for reservation flow.
-- Store payment status and provider reference, but **never store card details**.
-- Use simple primary keys (`Id`) and foreign keys.
-- Use UTC timestamps for auditability.
+## PostgreSQL conventions
 
----
+- Primary keys are `integer` identity columns.
+- Strings use PostgreSQL `text`.
+- UTC date/time values use `timestamp with time zone`.
+- `Rooms.PricePerNight` uses `numeric(10,2)`.
+- `Rooms.IsActive` uses `boolean`.
+- EF Core creates indexes and foreign keys as described below.
 
-## 1. Users
+## Tables
 
-Represents customers, staff, and admins.
+### `Users`
 
-| Field | Type | Required | Notes |
-|---|---|---|---|
-| Id | INTEGER | Yes | Primary key |
-| Email | TEXT | Yes | Unique |
-| PasswordHash | TEXT | Yes | Hashed password only |
-| FirstName | TEXT | Yes |  |
-| LastName | TEXT | Yes |  |
-| Phone | TEXT | No |  |
-| Role | TEXT | Yes | `Customer`, `Staff`, `Admin` |
-| CreatedAtUtc | TEXT | Yes | ISO-8601 UTC |
-| UpdatedAtUtc | TEXT | Yes | ISO-8601 UTC |
+Customer, staff, and administrator accounts.
 
----
+| Column | PostgreSQL type | Required | Notes |
+|---|---|---:|---|
+| `Id` | `integer` | Yes | Primary key, identity |
+| `Email` | `text` | Yes | Unique; API normalizes to lowercase |
+| `PasswordHash` | `text` | Yes | BCrypt hash; plaintext passwords are not stored |
+| `FirstName` | `text` | Yes | |
+| `LastName` | `text` | Yes | |
+| `Phone` | `text` | No | |
+| `Role` | `text` | Yes | `Customer`, `Staff`, or `Admin` |
+| `CreatedAtUtc` | `timestamp with time zone` | Yes | |
+| `UpdatedAtUtc` | `timestamp with time zone` | Yes | |
 
-## 2. Hotels
+Constraints and indexes:
 
-Represents hotel properties.
+- Unique index on `Email`.
+- Check constraint limits `Role` to `Customer`, `Staff`, or `Admin`.
 
-| Field | Type | Required | Notes |
-|---|---|---|---|
-| Id | INTEGER | Yes | Primary key |
-| Name | TEXT | Yes |  |
-| AddressLine1 | TEXT | Yes |  |
-| City | TEXT | Yes |  |
-| Country | TEXT | Yes |  |
-| PostalCode | TEXT | No |  |
-| CreatedAtUtc | TEXT | Yes | ISO-8601 UTC |
-| UpdatedAtUtc | TEXT | Yes | ISO-8601 UTC |
+### `Hotels`
 
----
+Hotel properties.
 
-## 3. Rooms
+| Column | PostgreSQL type | Required | Notes |
+|---|---|---:|---|
+| `Id` | `integer` | Yes | Primary key, identity |
+| `Name` | `text` | Yes | |
+| `AddressLine1` | `text` | Yes | |
+| `City` | `text` | Yes | |
+| `Country` | `text` | Yes | |
+| `PostalCode` | `text` | No | |
+| `CreatedAtUtc` | `timestamp with time zone` | Yes | |
+| `UpdatedAtUtc` | `timestamp with time zone` | Yes | |
 
-Represents bookable rooms in a hotel.
+### `Rooms`
 
-| Field | Type | Required | Notes |
-|---|---|---|---|
-| Id | INTEGER | Yes | Primary key |
-| HotelId | INTEGER | Yes | FK -> Hotels.Id |
-| RoomNumber | TEXT | Yes | Unique per hotel |
-| RoomType | TEXT | Yes | e.g. Single, Double, Suite |
-| Capacity | INTEGER | Yes | Number of guests |
-| PricePerNight | DECIMAL | Yes | Monetary value |
-| IsActive | INTEGER | Yes | 1 = available for booking, 0 = disabled |
-| CreatedAtUtc | TEXT | Yes | ISO-8601 UTC |
-| UpdatedAtUtc | TEXT | Yes | ISO-8601 UTC |
+Rooms belonging to a hotel.
 
----
+| Column | PostgreSQL type | Required | Notes |
+|---|---|---:|---|
+| `Id` | `integer` | Yes | Primary key, identity |
+| `HotelId` | `integer` | Yes | Foreign key to `Hotels.Id` |
+| `RoomNumber` | `text` | Yes | Unique within a hotel |
+| `RoomType` | `text` | Yes | |
+| `Capacity` | `integer` | Yes | Must be greater than zero |
+| `PricePerNight` | `numeric(10,2)` | Yes | Must be zero or greater |
+| `IsActive` | `boolean` | Yes | Defaults to `true` in the application model |
+| `CreatedAtUtc` | `timestamp with time zone` | Yes | |
+| `UpdatedAtUtc` | `timestamp with time zone` | Yes | |
 
-## 4. Reservations
+Constraints and indexes:
 
-Represents room bookings made by users.
+- Foreign key `HotelId` references `Hotels.Id`; deleting a hotel cascades to its rooms.
+- Unique index on `(HotelId, RoomNumber)`.
+- Check constraints require `Capacity > 0` and `PricePerNight >= 0`.
 
-| Field | Type | Required | Notes |
-|---|---|---|---|
-| Id | INTEGER | Yes | Primary key |
-| UserId | INTEGER | Yes | FK -> Users.Id |
-| HotelId | INTEGER | Yes | FK -> Hotels.Id; must match the room's hotel |
-| RoomId | INTEGER | Yes | FK -> Rooms.Id |
-| CheckInDate | TEXT | Yes | Date (YYYY-MM-DD) |
-| CheckOutDate | TEXT | Yes | Date (YYYY-MM-DD) |
-| GuestCount | INTEGER | Yes | Must be > 0. Must be <= Room.Capacity (deferred) |
-| Status | TEXT | Yes | `Pending`, `Confirmed`, `Cancelled` |
-| TotalPrice | DECIMAL | Yes | Calculated total (deferred) |
-| CreatedAtUtc | TEXT | Yes | ISO-8601 UTC |
-| UpdatedAtUtc | TEXT | Yes | ISO-8601 UTC |
+### `PasswordResetTokens`
 
----
+Single-use password reset tokens. Only the SHA-256 token hash is stored; the raw token is returned only in Development because email delivery is not implemented.
 
-## 5. Payments
+| Column | PostgreSQL type | Required | Notes |
+|---|---|---:|---|
+| `Id` | `integer` | Yes | Primary key, identity |
+| `UserId` | `integer` | Yes | Foreign key to `Users.Id` |
+| `TokenHash` | `text` | Yes | Unique |
+| `ExpiresAtUtc` | `timestamp with time zone` | Yes | |
+| `UsedAtUtc` | `timestamp with time zone` | No | Null until consumed |
+| `CreatedAtUtc` | `timestamp with time zone` | Yes | |
 
-Represents payment attempts/results for reservations.
+Constraints and indexes:
 
-| Field | Type | Required | Notes |
-|---|---|---|---|
-| Id | INTEGER | Yes | Primary key |
-| ReservationId | INTEGER | Yes | FK -> Reservations.Id |
-| Provider | TEXT | Yes | e.g. PayPal, MobilePay, Visa |
-| ProviderTransactionId | TEXT | No | External reference |
-| Amount | DECIMAL | Yes | Charged amount |
-| Currency | TEXT | Yes | e.g. EUR |
-| Status | TEXT | Yes | `Pending`, `Succeeded`, `Failed` |
-| PaidAtUtc | TEXT | No | Set when succeeded |
-| CreatedAtUtc | TEXT | Yes | ISO-8601 UTC |
+- Foreign key `UserId` references `Users.Id` with cascade delete.
+- Unique index on `TokenHash`; index on `UserId`.
 
-> Note: card numbers/CVV/expiry must not be stored.
+### `RefreshTokens`
 
----
+Hashed, one-use refresh tokens associated with user sessions.
 
-## 6. Notifications (optional simple table)
+| Column | PostgreSQL type | Required | Notes |
+|---|---|---:|---|
+| `Id` | `integer` | Yes | Primary key, identity |
+| `UserId` | `integer` | Yes | Foreign key to `Users.Id` |
+| `TokenHash` | `text` | Yes | Unique; raw token is sent to the client |
+| `ExpiresAtUtc` | `timestamp with time zone` | Yes | |
+| `UsedAtUtc` | `timestamp with time zone` | No | Set when exchanged |
+| `RevokedAtUtc` | `timestamp with time zone` | No | Set on logout, password changes, or token reuse |
+| `CreatedAtUtc` | `timestamp with time zone` | Yes | |
 
-Stores outgoing notification history for booking events.
+Constraints and indexes:
 
-| Field | Type | Required | Notes |
-|---|---|---|---|
-| Id | INTEGER | Yes | Primary key |
-| UserId | INTEGER | Yes | FK -> Users.Id |
-| ReservationId | INTEGER | No | FK -> Reservations.Id |
-| Type | TEXT | Yes | `BookingConfirmed`, `BookingCancelled`, etc. |
-| Channel | TEXT | Yes | `Email`, `Push` |
-| Status | TEXT | Yes | `Queued`, `Sent`, `Failed` |
-| SentAtUtc | TEXT | No | Set when sent |
-| CreatedAtUtc | TEXT | Yes | ISO-8601 UTC |
+- Foreign key `UserId` references `Users.Id` with cascade delete.
+- Unique index on `TokenHash`; index on `UserId`.
 
----
+## Relationships
 
-## Relationships (simple)
+- One `Hotel` has many `Rooms`.
+- Each `Room` belongs to one `Hotel`.
+- One `User` has many `PasswordResetTokens`.
+- One `User` has many `RefreshTokens`.
 
-- **Hotel 1 -> many Rooms**
-- **User 1 -> many Reservations**
-- **Room 1 -> many Reservations**
-- **Reservation 1 -> many Payments**
-- **User 1 -> many Notifications**
-- **Reservation 0..1 -> many Notifications**
+## Not currently persisted
 
----
+The current EF Core model does **not** contain reservation, payment, or notification tables. The API has no reservation or payment endpoints. Room availability is not yet derived from bookings. These capabilities remain future work; do not treat them as part of the current database schema.
 
-## Minimum constraints to enforce
+Payment card details must never be stored by this application. If payment processing is added, use an external provider and persist only the minimum non-sensitive provider reference and status needed by the application.
 
-1. `Users.Email` unique.
-2. `Rooms` unique `(HotelId, RoomNumber)`.
-3. `Reservations.CheckInDate < Reservations.CheckOutDate`.
-4. Prevent overlapping reservations for the same room when status is active (`Pending` or `Confirmed`). *(Deferred: not currently enforced, see "Deferred work" in `backend/README.md`.)*
-5. `GuestCount > 0` and `GuestCount <= Rooms.Capacity`. *(The capacity check is deferred: not currently enforced.)*
-6. Monetary values (`PricePerNight`, `TotalPrice`, `Amount`) must be >= 0.
+## Schema changes
 
----
-
-## Suggested implementation order
-
-1. Users
-2. Hotels
-3. Rooms
-4. Reservations
-5. Payments
-6. Notifications (optional in first backend skeleton)
-
-This order allows API endpoints and unit tests to start with room browsing + reservation flow before full payment and notification features are finalized.
+Update the API entities and `AppDbContext`, then create and review an EF Core migration. The API applies pending migrations at startup. See [the backend README](../backend/README.md) for migration and local database commands.
