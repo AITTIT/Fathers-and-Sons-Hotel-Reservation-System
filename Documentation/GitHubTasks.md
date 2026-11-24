@@ -8,31 +8,28 @@ This document classifies the work in `SoftwareSpec.md` as GitHub parent issues (
 - **Task**: implementation or validation issue belonging to an epic.
 - **Labels**: suggested GitHub labels; the upload script may create or map them.
 - **Dependencies**: issue keys that should be completed first.
+- **Status**: current repository progress; do not create a new issue for a task marked `Complete`.
 - Each task should be independently actionable and should include tests where applicable.
 
-## Architecture baseline: MAUI MVVM + ASP.NET Core API
+## Current architecture and delivery status
 
-The application is split into:
+The implementation currently consists of:
 
 - **.NET MAUI Client** (MVVM presentation and interaction)
-- **ASP.NET Core Web API** (application services and backend boundary)
-- **SQLite data file with Docker named volume persistence**
+- **ASP.NET Core Web API** (.NET 9, application services and backend boundary)
+- **PostgreSQL 17** (EF Core/Npgsql persistence, `postgres-data` Docker named volume)
+- **Docker Compose** services for PostgreSQL, API, and an Nginx browser test client
 
-MVVM remains the client pattern:
+The API currently has JWT authentication, Customer/Staff/Admin authorization, user/hotel/room endpoints, EF Core migrations applied at startup, and development seeding. Its integration tests use PostgreSQL Testcontainers. Reservations, payments, and notification delivery are not implemented.
+
+The MAUI project has feature service abstractions, but its auth and room implementations are in-memory mocks; it does not yet call the API. The room search and staff dashboard screens are present, while booking/help/staff management destinations are placeholders.
+
+Architecture boundaries and target direction:
 
 - **Models** represent domain and UI state in the MAUI client.
 - **Views** are XAML pages/components.
-- **ViewModels** expose bindable state and commands, and call service abstractions.
-- ViewModels must not contain direct persistence or HTTP infrastructure implementation details.
-
-Backend responsibilities:
-
-- API endpoints, validation, business rules, and data-access implementation.
-- Containerized runtime and environment-specific configuration.
-
-Shared responsibilities:
-
-- **Shared.Contracts** class library for API DTOs and contract types used by both client and backend.
+- **ViewModels** expose bindable state and commands and call service abstractions. HTTP implementation details stay in client-side services; persistence stays in the API.
+- The target includes a **Shared.Contracts** class library for DTOs used by both client and API. This project does not exist yet; API contract records and MAUI types are currently separate.
 
 Recommended feature organization:
 
@@ -66,43 +63,48 @@ Shared/
 
 ---
 
-## EPIC-00 — Establish client/server split and container platform
+## EPIC-00 — Complete MAUI-to-API integration and shared contracts
 
 **Labels:** `epic`, `architecture`, `backend`, `docker`, `priority:high`
 
-**Goal:** Bootstrap a MAUI client + ASP.NET Core API architecture, containerized backend runtime, and shared contracts.
+**Goal:** Complete the client/API contract boundary and client integration around the existing MAUI, ASP.NET Core API, and PostgreSQL Compose stack.
 
 ### Tasks
 
-- **TASK-00.01 — Add ASP.NET Core API and Shared.Contracts projects to the solution**
+- **TASK-00.01 — Add Shared.Contracts project and formalize the API contract boundary**
   - **Labels:** `task`, `architecture`, `backend`
   - **Dependencies:** none
-  - **Acceptance criteria:** Solution contains MAUI client, API backend, and shared contract library projects with successful restore/build.
+  - **Status:** In progress; the MAUI client and API exist, but the shared contracts project does not.
+  - **Acceptance criteria:** Shared DTOs are used by both projects; the solution restores and builds.
 
-- **TASK-00.02 — Define client/backend boundaries and service abstractions**
+- **TASK-00.02 — Wire client service abstractions to the API**
   - **Labels:** `task`, `architecture`, `mvvm`
   - **Dependencies:** TASK-00.01
-  - **Acceptance criteria:** MAUI ViewModels depend on interfaces and contract DTOs; direct persistence access is removed from client-side feature logic.
+  - **Status:** In progress; interfaces exist, but auth and room services are mocks.
+  - **Acceptance criteria:** MAUI service implementations call the API using shared contract DTOs; ViewModels remain persistence-free.
 
 - **TASK-00.03 — Add API containerization and Docker Compose orchestration**
   - **Labels:** `task`, `docker`, `operations`
-  - **Dependencies:** TASK-00.01
-  - **Acceptance criteria:** API has Dockerfile/.dockerignore and starts through docker compose with environment configuration.
+  - **Dependencies:** none
+  - **Status:** Complete.
+  - **Acceptance criteria:** API starts through Docker Compose with environment configuration.
 
-- **TASK-00.04 — Configure SQLite persistence with named volume in Compose**
-  - **Labels:** `task`, `data`, `docker`, `sqlite`
+- **TASK-00.04 — Configure PostgreSQL persistence with named volume in Compose**
+  - **Labels:** `task`, `data`, `docker`, `postgresql`
   - **Dependencies:** TASK-00.03
-  - **Acceptance criteria:** SQLite file persists across container restarts via named volume and API can read/write successfully.
+  - **Status:** Complete; PostgreSQL 17 uses the `postgres-data` named volume.
+  - **Acceptance criteria:** PostgreSQL data persists across container restarts and the API can read/write successfully.
 
-- **TASK-00.05 — Deliver backend skeleton endpoints without auth (phase 1)**
+- **TASK-00.05 — Deliver baseline API routes and authentication**
   - **Labels:** `task`, `backend`, `api`
-  - **Dependencies:** TASK-00.02, TASK-00.04
-  - **Acceptance criteria:** Health endpoint and at least one sample feature endpoint are available; no authentication is required in this initial milestone.
+  - **Dependencies:** TASK-00.04
+  - **Status:** Complete; the API has health, auth, user, hotel, and room routes.
+  - **Acceptance criteria:** Public and protected routes enforce the documented Customer/Staff/Admin access rules.
 
 - **TASK-00.06 — Add local setup documentation for MAUI + API + Docker workflow**
   - **Labels:** `task`, `documentation`, `dev-experience`
   - **Dependencies:** TASK-00.03, TASK-00.04
-  - **Acceptance criteria:** Documentation covers prerequisites, compose startup, MAUI client configuration to API base URL, and troubleshooting basics.
+  - **Acceptance criteria:** Documentation covers prerequisites, Compose startup, API access, current mock-client limitation, and troubleshooting basics; API base-URL integration is documented as remaining work.
 
 ## EPIC-01 — Establish the MVVM application foundation
 
@@ -279,7 +281,7 @@ Shared/
   - **Dependencies:** TASK-05.02
   - **Acceptance criteria:** Repeated requests do not create duplicate bookings; concurrent booking attempts leave at most one valid reservation for a room/time period.
 
-## EPIC-06 — Integrate payment processing
+## EPIC-06 — Integrate payment processing (BACKLOG)
 
 **Labels:** `epic`, `payments`, `security`, `priority:critical`
 
@@ -312,7 +314,7 @@ Shared/
   - **Dependencies:** TASK-06.03, TASK-05.02
   - **Acceptance criteria:** Successful payment confirms the booking; failed payments notify the user and do not leave an incorrectly confirmed reservation; callbacks/retries are idempotent.
 
-## EPIC-07 — Implement notifications
+## EPIC-07 — Implement notifications (BACKLOG)
 
 **Labels:** `epic`, `notifications`, `priority:medium`
 
@@ -340,7 +342,7 @@ Shared/
   - **Dependencies:** TASK-07.02
   - **Acceptance criteria:** Messages use localized templates; delivery is targeted within one minute and reliability is measurable against the 99% requirement.
 
-## EPIC-08 — Secure, operate, and monitor the system
+## EPIC-08 — Secure, operate, and monitor the system (BACKLOG)
 
 **Labels:** `epic`, `security`, `operations`, `priority:high`
 
@@ -383,7 +385,7 @@ Shared/
   - **Dependencies:** TASK-08.04, TASK-08.05
   - **Acceptance criteria:** Authorized administrators can inspect relevant logs and service status without exposing secrets or personal data unnecessarily.
 
-## EPIC-09 — Deliver quality, localization, and release readiness
+## EPIC-09 — Deliver quality, localization, and release readiness (BACKLOG)
 
 **Labels:** `epic`, `quality`, `testing`, `release`, `priority:high`
 
@@ -428,21 +430,23 @@ Shared/
 
 ## Suggested implementation order
 
-1. EPIC-00 — Client/server split and container platform
-2. EPIC-01 — MVVM foundation
-3. EPIC-02 — Identity and roles
-4. EPIC-03 — Hotel and room management
-5. EPIC-04 — Search and recommendations
-6. EPIC-05 — Booking management
-7. EPIC-06 — Payment processing
-8. EPIC-07 — Notifications
-9. EPIC-08 — Security and operations (security tasks should begin with the foundation)
-10. EPIC-09 — Quality, localization, and release readiness (testing should begin alongside each epic)
+The order below is the original product roadmap, not a statement that all earlier epics are still outstanding. The API/container/PostgreSQL work in EPIC-00 is substantially in place; shared contracts and MAUI-to-API integration remain. The API's current identity, hotel, and room work also partially overlaps EPIC-02/03. Update issue status against the repository before generating new GitHub issues.
+
+1. Complete EPIC-00 — Shared contracts and MAUI-to-API integration
+2. Complete EPIC-01 — MVVM foundation and consistent client patterns
+3. Extend EPIC-02 — Identity, profiles, and role-based client access
+4. Complete EPIC-03 — Hotel/room client flows and availability
+5. Implement EPIC-04 — Search and recommendations
+6. Implement EPIC-05 — Booking management
+7. Implement EPIC-06 — Payment processing
+8. Implement EPIC-07 — Notifications
+9. Continue EPIC-08 — Security and operations
+10. Continue EPIC-09 — Quality, localization, and release readiness
 
 ## Script parsing notes
 
 - Create one GitHub issue per `EPIC-*` entry and mark it as the parent issue.
 - Create one issue per `TASK-*` entry and link it to its listed epic.
 - Preserve issue keys in titles or metadata so rerunning the upload script can be idempotent.
-- Convert **Labels**, **Dependencies**, **Goal**, and **Acceptance criteria** into structured issue fields or the issue body.
+- Convert **Labels**, **Dependencies**, **Goal**, and **Acceptance criteria** into structured issue fields or the issue body; use **Status** to avoid recreating completed work.
 - GitHub Projects can use the epic/task distinction, labels, and dependencies to create views for status, priority, and subsystem.
