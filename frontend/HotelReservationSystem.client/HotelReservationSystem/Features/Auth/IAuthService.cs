@@ -6,6 +6,8 @@ public sealed record SignedInUser(string Email, string FirstName, string LastNam
 {
     public bool IsStaff => Role == UserRole.Staff;
 
+    public bool IsAdmin => Role == UserRole.Admin;
+
     public string DisplayName => $"{FirstName} {LastName}".Trim();
 }
 

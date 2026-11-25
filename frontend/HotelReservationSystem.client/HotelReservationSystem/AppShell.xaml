@@ -5,6 +5,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     xmlns:search="clr-namespace:HotelReservationSystem.Features.RoomSearch"
     xmlns:staff="clr-namespace:HotelReservationSystem.Features.Staff"
+    xmlns:admin="clr-namespace:HotelReservationSystem.Features.Admin"
     xmlns:placeholders="clr-namespace:HotelReservationSystem.Features.Placeholders"
     Title="Hotel Reservation"
     Shell.NavBarIsVisible="False"
@@ -13,15 +14,22 @@
     FlyoutBackgroundColor="{StaticResource Sidebar}">
 
     <Shell.FlyoutHeader>
-        <HorizontalStackLayout Padding="22,28,22,20" Spacing="12">
-            <Border WidthRequest="40" HeightRequest="40" StrokeThickness="0"
-                    StrokeShape="RoundRectangle 10" BackgroundColor="{StaticResource Accent}">
-                <Label Text="H" TextColor="{StaticResource AccentText}" FontFamily="OpenSansSemibold"
-                       FontSize="20" HorizontalOptions="Center" VerticalOptions="Center" />
+        <VerticalStackLayout Padding="22,28,8,20" Spacing="14">
+            <HorizontalStackLayout Spacing="12">
+                <Border WidthRequest="40" HeightRequest="40" StrokeThickness="0"
+                        StrokeShape="RoundRectangle 10" BackgroundColor="{StaticResource Accent}">
+                    <Label Text="H" TextColor="{StaticResource AccentText}" FontFamily="OpenSansSemibold"
+                           FontSize="20" HorizontalOptions="Center" VerticalOptions="Center" />
+                </Border>
+                <Label Text="Hotel Reservation" TextColor="White" FontFamily="OpenSansSemibold"
+                       FontSize="18" VerticalOptions="Center" />
+            </HorizontalStackLayout>
+            <Border x:Name="AdminBadge" IsVisible="False" HorizontalOptions="Start" Padding="10,3"
+                    StrokeThickness="1" Stroke="{StaticResource Accent}" StrokeShape="RoundRectangle 6">
+                <Label Text="ADMIN" TextColor="{StaticResource Accent}" FontFamily="OpenSansSemibold"
+                       FontSize="12" />
             </Border>
-            <Label Text="Hotel Reservation" TextColor="White" FontFamily="OpenSansSemibold"
-                   FontSize="18" VerticalOptions="Center" />
-        </HorizontalStackLayout>
+        </VerticalStackLayout>
     </Shell.FlyoutHeader>
 
     <Shell.ItemTemplate>
@@ -66,6 +74,19 @@
     </FlyoutItem>
     <FlyoutItem x:Name="StaffCustomersItem" Title="Customers" Icon="icon_globe.png" IsVisible="False">
         <ShellContent ContentTemplate="{DataTemplate placeholders:StaffCustomersPage}" Route="staffcustomers" />
+    </FlyoutItem>
+
+    <FlyoutItem x:Name="AdminUsersItem" Title="Users" Icon="icon_globe.png" IsVisible="False">
+        <ShellContent ContentTemplate="{DataTemplate admin:AdminUsersPage}" Route="admin" />
+    </FlyoutItem>
+    <FlyoutItem x:Name="AdminHotelsItem" Title="Hotels and rooms" Icon="icon_bed.png" IsVisible="False">
+        <ShellContent ContentTemplate="{DataTemplate admin:AdminHotelsPage}" Route="adminhotels" />
+    </FlyoutItem>
+    <FlyoutItem x:Name="AdminLogsItem" Title="Application logs" Icon="icon_help.png" IsVisible="False">
+        <ShellContent ContentTemplate="{DataTemplate placeholders:AdminLogsPage}" Route="adminlogs" />
+    </FlyoutItem>
+    <FlyoutItem x:Name="AdminAuditItem" Title="Audit trail" Icon="icon_calendar.png" IsVisible="False">
+        <ShellContent ContentTemplate="{DataTemplate placeholders:AdminAuditPage}" Route="adminaudit" />
     </FlyoutItem>
 
     <FlyoutItem x:Name="CustomerRoomsItem" Title="Find rooms" Icon="icon_search.png">

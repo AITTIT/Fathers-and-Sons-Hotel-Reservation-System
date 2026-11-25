@@ -1,4 +1,5 @@
-﻿using HotelReservationSystem.Features.Auth;
+﻿using HotelReservationSystem.Features.Admin;
+using HotelReservationSystem.Features.Auth;
 using HotelReservationSystem.Features.RoomSearch;
 using HotelReservationSystem.Features.Rooms;
 using HotelReservationSystem.Features.Staff;
@@ -20,9 +21,11 @@ namespace HotelReservationSystem
                 });
 
             // Services (swap MockRoomService for the API-backed implementation later)
+            builder.Services.AddSingleton<MockHotelStore>();
             builder.Services.AddSingleton<IRoomService, MockRoomService>();
 
             // Auth (swap MockAuthService for the API-backed implementation later)
+            builder.Services.AddSingleton<MockUserStore>();
             builder.Services.AddSingleton<IAuthService, MockAuthService>();
             builder.Services.AddTransient<LoginViewModel>();
             builder.Services.AddTransient<LoginPage>();
@@ -34,6 +37,16 @@ namespace HotelReservationSystem
             // Staff dashboard
             builder.Services.AddTransient<StaffDashboardViewModel>();
             builder.Services.AddTransient<StaffDashboardPage>();
+
+            // Admin user management
+            builder.Services.AddSingleton<IUserAdminService, MockUserAdminService>();
+            builder.Services.AddTransient<AdminUsersViewModel>();
+            builder.Services.AddTransient<AdminUsersPage>();
+
+            // Admin hotel and room management
+            builder.Services.AddSingleton<IHotelAdminService, MockHotelAdminService>();
+            builder.Services.AddTransient<AdminHotelsViewModel>();
+            builder.Services.AddTransient<AdminHotelsPage>();
 
 #if WINDOWS
             // Remove the native WinUI input chrome so our rounded Border fields are the only outline.

@@ -304,7 +304,7 @@ Payment processing is not implemented in the current system. A mock provider may
  - Development-only admin/demo-data seeding and interactive API documentation.
  - Integration tests use an isolated PostgreSQL 17 Testcontainers instance.
 
- The MAUI client remains an early prototype. Room search and the staff dashboard are present but use mock data; sign-in/registration use an in-memory mock. Booking, help, staff reservations/rooms/customers, payment, and notification flows are not implemented. See [the container and client architecture document](ClientApiContainerizationPlan.md) and [the backend README](../backend/README.md) for operational details.
+ The MAUI client remains an early prototype. Room search, the staff dashboard and admin user management are present but use mock data; sign-in/registration use an in-memory mock. Booking, help, staff reservations/rooms/customers, admin logs/audit trail, payment, and notification flows are not implemented. See [the container and client architecture document](ClientApiContainerizationPlan.md) and [the backend README](../backend/README.md) for operational details.
 
 ---
 
