@@ -43,3 +43,7 @@ public sealed class StaffReservationsPage() : PlaceholderPage("Reservations");
 public sealed class StaffRoomsPage() : PlaceholderPage("Rooms");
 
 public sealed class StaffCustomersPage() : PlaceholderPage("Customers");
+
+public sealed class AdminLogsPage() : PlaceholderPage("Application logs");
+
+public sealed class AdminAuditPage() : PlaceholderPage("Audit trail");

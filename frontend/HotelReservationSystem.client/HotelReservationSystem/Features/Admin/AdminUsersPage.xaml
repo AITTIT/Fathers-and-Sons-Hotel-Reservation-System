@@ -1,0 +1,215 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:HotelReservationSystem.Features.Admin"
+             x:Class="HotelReservationSystem.Features.Admin.AdminUsersPage"
+             x:DataType="vm:AdminUsersViewModel"
+             Title="Users"
+             Shell.NavBarIsVisible="False"
+             BackgroundColor="{StaticResource PageBackground}">
+
+    <ContentPage.Resources>
+        <Style x:Key="FieldBorder" TargetType="Border">
+            <Setter Property="Stroke" Value="{StaticResource FieldStroke}" />
+            <Setter Property="StrokeShape" Value="RoundRectangle 10" />
+            <Setter Property="StrokeThickness" Value="1" />
+            <Setter Property="BackgroundColor" Value="{StaticResource Surface}" />
+            <Setter Property="HeightRequest" Value="48" />
+            <Setter Property="Padding" Value="12,0" />
+        </Style>
+
+        <Style x:Key="PrimaryButton" TargetType="Button">
+            <Setter Property="BackgroundColor" Value="{StaticResource Primary}" />
+            <Setter Property="TextColor" Value="White" />
+            <Setter Property="FontFamily" Value="OpenSansSemibold" />
+            <Setter Property="FontSize" Value="16" />
+            <Setter Property="CornerRadius" Value="10" />
+            <Setter Property="HeightRequest" Value="48" />
+            <Setter Property="Padding" Value="20,0" />
+        </Style>
+
+        <Style x:Key="LinkButton" TargetType="Button">
+            <Setter Property="BackgroundColor" Value="Transparent" />
+            <Setter Property="TextColor" Value="{StaticResource Primary}" />
+            <Setter Property="FontFamily" Value="OpenSansSemibold" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="Padding" Value="8,0" />
+            <Setter Property="MinimumHeightRequest" Value="44" />
+        </Style>
+
+        <Style x:Key="TabButton" TargetType="Button">
+            <Setter Property="BackgroundColor" Value="{StaticResource Surface}" />
+            <Setter Property="TextColor" Value="{StaticResource Ink}" />
+            <Setter Property="BorderColor" Value="{StaticResource FieldStroke}" />
+            <Setter Property="BorderWidth" Value="1" />
+            <Setter Property="FontFamily" Value="OpenSansSemibold" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="CornerRadius" Value="20" />
+            <Setter Property="HeightRequest" Value="40" />
+            <Setter Property="Padding" Value="16,0" />
+            <Setter Property="Margin" Value="0,0,8,8" />
+        </Style>
+
+        <Style x:Key="ColumnHeader" TargetType="Label">
+            <Setter Property="FontFamily" Value="OpenSansSemibold" />
+            <Setter Property="TextColor" Value="{StaticResource Muted}" />
+        </Style>
+    </ContentPage.Resources>
+
+    <ScrollView>
+        <VerticalStackLayout Padding="40,48,40,40" Spacing="20">
+
+            <!-- Heading -->
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                <Label Text="Users" TextColor="{StaticResource Ink}" FontFamily="OpenSansSemibold" FontSize="36"
+                       VerticalOptions="Center" SemanticProperties.HeadingLevel="Level1" />
+                <Button Grid.Column="1" Text="+ Create staff account" VerticalOptions="Center"
+                        Style="{StaticResource PrimaryButton}" Command="{Binding ShowCreateFormCommand}" />
+            </Grid>
+
+            <!-- Create staff account -->
+            <Border IsVisible="{Binding IsCreating}" StrokeShape="RoundRectangle 16" StrokeThickness="1"
+                    Stroke="{StaticResource Line}" BackgroundColor="{StaticResource Surface}" Padding="20">
+                <VerticalStackLayout Spacing="14">
+                    <Label Text="New staff account" TextColor="{StaticResource Ink}" FontFamily="OpenSansSemibold"
+                           FontSize="20" SemanticProperties.HeadingLevel="Level2" />
+                    <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" ColumnSpacing="12" RowSpacing="12">
+                        <Border Style="{StaticResource FieldBorder}">
+                            <Entry Text="{Binding NewFirstName}" Placeholder="First name" TextColor="{StaticResource Ink}"
+                                   PlaceholderColor="{StaticResource Muted}" VerticalOptions="Center"
+                                   SemanticProperties.Description="First name" />
+                        </Border>
+                        <Border Grid.Column="1" Style="{StaticResource FieldBorder}">
+                            <Entry Text="{Binding NewLastName}" Placeholder="Last name" TextColor="{StaticResource Ink}"
+                                   PlaceholderColor="{StaticResource Muted}" VerticalOptions="Center"
+                                   SemanticProperties.Description="Last name" />
+                        </Border>
+                        <Border Grid.Row="1" Style="{StaticResource FieldBorder}">
+                            <Entry Text="{Binding NewEmail}" Keyboard="Email" Placeholder="Email"
+                                   TextColor="{StaticResource Ink}" PlaceholderColor="{StaticResource Muted}"
+                                   VerticalOptions="Center" SemanticProperties.Description="Email" />
+                        </Border>
+                        <Border Grid.Row="1" Grid.Column="1" Style="{StaticResource FieldBorder}">
+                            <Entry Text="{Binding NewPassword}" IsPassword="True" Placeholder="Temporary password"
+                                   TextColor="{StaticResource Ink}" PlaceholderColor="{StaticResource Muted}"
+                                   VerticalOptions="Center" ReturnCommand="{Binding CreateStaffCommand}"
+                                   SemanticProperties.Description="Temporary password" />
+                        </Border>
+                    </Grid>
+                    <Label Text="{Binding FormError}" IsVisible="{Binding HasFormError}" TextColor="#B3261E" />
+                    <HorizontalStackLayout Spacing="12" HorizontalOptions="End">
+                        <Button Text="Cancel" Style="{StaticResource LinkButton}" Command="{Binding CancelCreateCommand}" />
+                        <Button Text="Create account" Style="{StaticResource PrimaryButton}"
+                                Command="{Binding CreateStaffCommand}" />
+                    </HorizontalStackLayout>
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- Search -->
+            <Border Style="{StaticResource FieldBorder}">
+                <Entry Text="{Binding SearchText}" Placeholder="Search by name or email"
+                       TextColor="{StaticResource Ink}" PlaceholderColor="{StaticResource Muted}"
+                       VerticalOptions="Center" SemanticProperties.Description="Search users by name or email" />
+            </Border>
+
+            <!-- Role filter -->
+            <FlexLayout BindableLayout.ItemsSource="{Binding Tabs}" Wrap="Wrap" AlignItems="Center">
+                <BindableLayout.ItemTemplate>
+                    <DataTemplate x:DataType="vm:RoleTab">
+                        <Button Text="{Binding Text}" Command="{Binding SelectCommand}">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource TabButton}">
+                                    <Style.Triggers>
+                                        <DataTrigger TargetType="Button" Binding="{Binding IsSelected}" Value="True">
+                                            <Setter Property="BackgroundColor" Value="{StaticResource Primary}" />
+                                            <Setter Property="BorderColor" Value="{StaticResource Primary}" />
+                                            <Setter Property="TextColor" Value="White" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+                    </DataTemplate>
+                </BindableLayout.ItemTemplate>
+            </FlexLayout>
+
+            <Label Text="{Binding Message}" IsVisible="{Binding HasMessage}" FontFamily="OpenSansSemibold">
+                <Label.Style>
+                    <Style TargetType="Label">
+                        <Setter Property="TextColor" Value="#2E8B57" />
+                        <Style.Triggers>
+                            <DataTrigger TargetType="Label" Binding="{Binding IsError}" Value="True">
+                                <Setter Property="TextColor" Value="#B3261E" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Label.Style>
+            </Label>
+
+            <!-- User table -->
+            <Border StrokeShape="RoundRectangle 16" StrokeThickness="1" Stroke="{StaticResource Line}"
+                    BackgroundColor="{StaticResource Surface}" Padding="0">
+                <VerticalStackLayout>
+                    <Grid ColumnDefinitions="2*,*,*,2*" ColumnSpacing="12" Padding="20,14"
+                          BackgroundColor="{StaticResource PageBackground}">
+                        <Label Text="Name" Style="{StaticResource ColumnHeader}" />
+                        <Label Grid.Column="1" Text="Role" Style="{StaticResource ColumnHeader}" />
+                        <Label Grid.Column="2" Text="Status" Style="{StaticResource ColumnHeader}" />
+                        <Label Grid.Column="3" Text="Actions" Style="{StaticResource ColumnHeader}" />
+                    </Grid>
+                    <VerticalStackLayout BindableLayout.ItemsSource="{Binding Rows}">
+                        <BindableLayout.ItemTemplate>
+                            <DataTemplate x:DataType="vm:UserRowViewModel">
+                                <VerticalStackLayout>
+                                    <BoxView HeightRequest="1" Color="{StaticResource Line}" />
+                                    <Grid ColumnDefinitions="2*,*,*,2*" ColumnSpacing="12" Padding="20,10">
+                                        <VerticalStackLayout VerticalOptions="Center">
+                                            <Label Text="{Binding Name}" TextColor="{StaticResource Ink}"
+                                                   LineBreakMode="TailTruncation" />
+                                            <Label Text="{Binding Email}" TextColor="{StaticResource Muted}" FontSize="12"
+                                                   LineBreakMode="TailTruncation" />
+                                        </VerticalStackLayout>
+
+                                        <Border Grid.Column="1" IsVisible="{Binding CanManage}" VerticalOptions="Center"
+                                                StrokeShape="RoundRectangle 10" Stroke="{StaticResource FieldStroke}"
+                                                StrokeThickness="1" Padding="8,0">
+                                            <Picker ItemsSource="{Binding Roles}" SelectedItem="{Binding SelectedRole}"
+                                                    TextColor="{StaticResource Ink}"
+                                                    SemanticProperties.Description="User role" />
+                                        </Border>
+                                        <Label Grid.Column="1" IsVisible="{Binding IsSelf}" Text="{Binding SelectedRole}"
+                                               TextColor="{StaticResource Ink}" VerticalOptions="Center" />
+
+                                        <Label Grid.Column="2" Text="{Binding StatusText}" TextColor="{Binding StatusColor}"
+                                               FontFamily="OpenSansSemibold" VerticalOptions="Center" />
+
+                                        <FlexLayout Grid.Column="3" IsVisible="{Binding CanManage}" Wrap="Wrap"
+                                                    AlignItems="Center" VerticalOptions="Center">
+                                            <Button Text="Reset" Style="{StaticResource LinkButton}"
+                                                    Clicked="OnResetPassword"
+                                                    SemanticProperties.Description="Reset password" />
+                                            <Button Text="{Binding LockText}" Style="{StaticResource LinkButton}"
+                                                    Command="{Binding ToggleLockCommand}" />
+                                            <Button Text="Remove" Style="{StaticResource LinkButton}" TextColor="#B3261E"
+                                                    Clicked="OnRemove" />
+                                        </FlexLayout>
+                                        <Label Grid.Column="3" IsVisible="{Binding IsSelf}" Text="Your account"
+                                               TextColor="{StaticResource Muted}" VerticalOptions="Center" />
+                                    </Grid>
+                                </VerticalStackLayout>
+                            </DataTemplate>
+                        </BindableLayout.ItemTemplate>
+                    </VerticalStackLayout>
+                    <VerticalStackLayout IsVisible="{Binding HasNoRows}">
+                        <BoxView HeightRequest="1" Color="{StaticResource Line}" />
+                        <Label Text="No users match your search." TextColor="{StaticResource Muted}" Padding="20,16" />
+                    </VerticalStackLayout>
+                </VerticalStackLayout>
+            </Border>
+
+            <Label Text="Demo data: changes are lost when the app closes, and there is no audit trail yet."
+                   TextColor="{StaticResource Muted}" />
+
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

@@ -1,15 +1,11 @@
 namespace HotelReservationSystem.Features.Auth;
 
-/// <summary>In-memory stand-in until the API client exists. Demo logins: guest@example.com / Password1, staff@example.com / Password1</summary>
-public sealed class MockAuthService : IAuthService
+/// <summary>
+/// In-memory stand-in until the API client exists.
+/// Demo logins: guest@example.com, staff@example.com, admin@example.com (password: Password1)
+/// </summary>
+public sealed class MockAuthService(MockUserStore store) : IAuthService
 {
-    private readonly Dictionary<string, (string Password, SignedInUser User)> _users =
-        new(StringComparer.OrdinalIgnoreCase)
-        {
-            ["guest@example.com"] = ("Password1", new SignedInUser("guest@example.com", "Demo", "Guest")),
-            ["staff@example.com"] = ("Password1", new SignedInUser("staff@example.com", "Juha", "Laine", UserRole.Staff)),
-        };
-
     public SignedInUser? CurrentUser { get; private set; }
 
     public event EventHandler? CurrentUserChanged;
@@ -18,10 +14,14 @@ public sealed class MockAuthService : IAuthService
     {
         await Task.Delay(400);
 
-        if (!_users.TryGetValue(email.Trim(), out var entry) || entry.Password != password)
+        var account = store.Find(email);
+        if (account is null || account.Password != password)
             return AuthResult.Fail("Incorrect email or password.");
 
-        SetUser(entry.User);
+        if (account.IsLocked)
+            return AuthResult.Fail("This account is locked. Contact an administrator.");
+
+        SetUser(account.ToSignedInUser());
         return AuthResult.Ok();
     }
 
@@ -29,13 +29,11 @@ public sealed class MockAuthService : IAuthService
     {
         await Task.Delay(400);
 
-        var email = d.Email.Trim();
-        if (_users.ContainsKey(email))
+        if (store.Find(d.Email) is not null)
             return AuthResult.Fail("An account with this email already exists.");
 
-        var user = new SignedInUser(email, d.FirstName.Trim(), d.LastName.Trim());
-        _users[email] = (d.Password, user);
-        SetUser(user);
+        var account = store.Add(d.Email, d.Password, d.FirstName, d.LastName);
+        SetUser(account.ToSignedInUser());
         return AuthResult.Ok();
     }
 

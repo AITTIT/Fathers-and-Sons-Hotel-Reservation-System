@@ -6,9 +6,14 @@ public partial class LoginPage : ContentPage
     {
         InitializeComponent();
         BindingContext = viewModel;
-        // Staff land on their dashboard; everyone else goes back to where they came from.
+        // Staff and admins land on their own start page; everyone else goes back to where they came from.
         viewModel.Completed += async (_, _) =>
-            await Shell.Current.GoToAsync(auth.CurrentUser?.IsStaff == true ? "//staff" : "..");
+            await Shell.Current.GoToAsync(auth.CurrentUser?.Role switch
+            {
+                UserRole.Admin => "//admin",
+                UserRole.Staff => "//staff",
+                _ => "..",
+            });
     }
 
     private async void OnContinueAsGuest(object? sender, TappedEventArgs e) =>
