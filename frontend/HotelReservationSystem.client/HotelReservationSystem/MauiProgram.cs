@@ -21,6 +21,7 @@ namespace HotelReservationSystem
                 });
 
             // Services (swap MockRoomService for the API-backed implementation later)
+            builder.Services.AddSingleton<MockHotelStore>();
             builder.Services.AddSingleton<IRoomService, MockRoomService>();
 
             // Auth (swap MockAuthService for the API-backed implementation later)
@@ -41,6 +42,11 @@ namespace HotelReservationSystem
             builder.Services.AddSingleton<IUserAdminService, MockUserAdminService>();
             builder.Services.AddTransient<AdminUsersViewModel>();
             builder.Services.AddTransient<AdminUsersPage>();
+
+            // Admin hotel and room management
+            builder.Services.AddSingleton<IHotelAdminService, MockHotelAdminService>();
+            builder.Services.AddTransient<AdminHotelsViewModel>();
+            builder.Services.AddTransient<AdminHotelsPage>();
 
 #if WINDOWS
             // Remove the native WinUI input chrome so our rounded Border fields are the only outline.

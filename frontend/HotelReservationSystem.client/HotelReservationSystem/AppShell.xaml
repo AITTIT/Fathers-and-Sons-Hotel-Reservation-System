@@ -79,6 +79,9 @@
     <FlyoutItem x:Name="AdminUsersItem" Title="Users" Icon="icon_globe.png" IsVisible="False">
         <ShellContent ContentTemplate="{DataTemplate admin:AdminUsersPage}" Route="admin" />
     </FlyoutItem>
+    <FlyoutItem x:Name="AdminHotelsItem" Title="Hotels and rooms" Icon="icon_bed.png" IsVisible="False">
+        <ShellContent ContentTemplate="{DataTemplate admin:AdminHotelsPage}" Route="adminhotels" />
+    </FlyoutItem>
     <FlyoutItem x:Name="AdminLogsItem" Title="Application logs" Icon="icon_help.png" IsVisible="False">
         <ShellContent ContentTemplate="{DataTemplate placeholders:AdminLogsPage}" Route="adminlogs" />
     </FlyoutItem>

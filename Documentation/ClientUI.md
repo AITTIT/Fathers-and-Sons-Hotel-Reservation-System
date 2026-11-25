@@ -2,7 +2,7 @@
 
 > **These are target UX wireframes, not a description of every screen currently implemented.** The MAUI app currently has the room-search screen, mock sign-in/registration, a staff dashboard and the admin user-management screen (A1), populated with mock data. Room, auth and user-administration services are in-memory and are not connected to the API. The bookings, help, staff reservations, rooms, customers, application logs, and audit trail destinations are placeholders; the booking and payment screens below remain proposed designs.
 >
-> The current mobile shell uses a flyout menu, not the bottom tab bar shown in the mobile concept. The room-search form, staff dashboard and admin user management are real screens, but room search submission is not yet connected to a results flow, the dashboard data is static and user changes are kept only in memory.
+> The current mobile shell uses a flyout menu, not the bottom tab bar shown in the mobile concept. The room-search form, staff dashboard, admin user management and admin hotel/room management are real screens, but room search submission is not yet connected to a results flow, the dashboard data is static and user, hotel and room changes are kept only in memory.
 
 ## Customer views
 

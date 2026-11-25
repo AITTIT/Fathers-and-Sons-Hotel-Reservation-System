@@ -40,6 +40,7 @@ namespace HotelReservationSystem
                 (StaffRoomsItem, isStaff),
                 (StaffCustomersItem, isStaff),
                 (AdminUsersItem, isAdmin),
+                (AdminHotelsItem, isAdmin),
                 (AdminLogsItem, isAdmin),
                 (AdminAuditItem, isAdmin),
                 (CustomerRoomsItem, !isStaff && !isAdmin),
