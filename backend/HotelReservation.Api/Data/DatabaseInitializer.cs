@@ -1,7 +1,6 @@
 using HotelReservation.Api.Features.Auth;
 using HotelReservation.Api.Features.Users;
 using Microsoft.EntityFrameworkCore;
-using Npgsql;
 
 namespace HotelReservation.Api.Data;
 
@@ -29,19 +28,24 @@ public static class DatabaseInitializer
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var logger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("DatabaseInitializer");
 
+        // Only waiting for the server is retried. Migration errors (bad SQL, missing privileges) fail right away.
         for (var attempt = 1; ; attempt++)
         {
             try
             {
-                await db.Database.MigrateAsync();
+                await db.Database.OpenConnectionAsync();
+                await db.Database.CloseConnectionAsync();
                 break;
             }
-            catch (Exception ex) when (attempt < MaxAttempts && (ex is NpgsqlException || ex.InnerException is NpgsqlException))
+            catch (Exception ex) when (attempt < MaxAttempts && DatabaseSetup.IsDatabaseError(ex))
             {
-                logger.LogWarning("Database not ready (attempt {Attempt}/{Max}): {Message}", attempt, MaxAttempts, ex.Message);
+                // GetBaseException: Pomelo wraps connection errors in a generic "transient failure" message.
+                logger.LogWarning("Database not ready (attempt {Attempt}/{Max}): {Message}", attempt, MaxAttempts, ex.GetBaseException().Message);
                 await Task.Delay(TimeSpan.FromSeconds(2));
             }
         }
+
+        await db.Database.MigrateAsync();
 
         await SeedAdminAsync(db, app.Configuration.GetSection(AdminSeedOptions.SectionName).Get<AdminSeedOptions>() ?? new(), logger);
 
