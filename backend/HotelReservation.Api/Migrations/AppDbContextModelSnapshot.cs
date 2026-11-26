@@ -38,7 +38,8 @@ namespace HotelReservation.Api.Migrations
 
                     b.Property<string>("TokenHash")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
 
                     b.Property<DateTime?>("UsedAtUtc")
                         .HasColumnType("timestamp with time zone");
@@ -75,7 +76,8 @@ namespace HotelReservation.Api.Migrations
 
                     b.Property<string>("TokenHash")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
 
                     b.Property<DateTime?>("UsedAtUtc")
                         .HasColumnType("timestamp with time zone");
@@ -157,7 +159,8 @@ namespace HotelReservation.Api.Migrations
 
                     b.Property<string>("RoomNumber")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
 
                     b.Property<string>("RoomType")
                         .IsRequired()
@@ -192,7 +195,8 @@ namespace HotelReservation.Api.Migrations
 
                     b.Property<string>("Email")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(254)
+                        .HasColumnType("character varying(254)");
 
                     b.Property<string>("FirstName")
                         .IsRequired()
