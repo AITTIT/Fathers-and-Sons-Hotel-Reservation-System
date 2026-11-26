@@ -38,6 +38,23 @@ docker compose down -v              # wipe the database; the next start re-creat
 
 Compose runs the API in Development mode with local-only settings (see `docker-compose.yml`). `GET /health` is a liveness check.
 
+### Running on MariaDB
+
+The `mariadb` profile adds a second API next to the PostgreSQL one, backed by MariaDB 10.4.12 (the school server's version). The same accounts work on both.
+
+```powershell
+docker compose --profile mariadb up -d --build
+docker compose --profile mariadb down -v   # wipe both databases; without --profile the MariaDB services are left alone
+```
+
+| What | Where |
+|---|---|
+| API on MariaDB | http://localhost:5048 (docs at `/scalar/v1`) |
+| Test page against it | http://localhost:5500/?api=http://localhost:5048 |
+| MariaDB | `localhost:3306`, db `hotel_reservation`, `hotel`/`hotel` (root: `root`/`root`) |
+
+The first MariaDB start takes 20–30 seconds; the API waits for its healthcheck. The API picks the database with `Database:Provider` (`Postgres` or `MySql`, for both MySQL and MariaDB) and `Database:ServerVersion` (e.g. `10.4.12-mariadb`, `8.4.13-mysql`); see the `api-mariadb` service.
+
 ## Integration tests
 
 The backend integration tests use `WebApplicationFactory` and Testcontainers. Each test run starts an isolated PostgreSQL 17 container, applies the EF Core migrations, runs the tests, and removes the temporary container afterward. The tests do not use or modify the PostgreSQL database from Docker Compose.
