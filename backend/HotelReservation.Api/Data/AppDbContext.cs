@@ -24,6 +24,12 @@ public class AppDbContext : DbContext
     {
     }
 
+    // Used by the provider-specific contexts in ProviderDbContexts.cs.
+    protected AppDbContext(DbContextOptions options)
+        : base(options)
+    {
+    }
+
     public DbSet<User> Users => Set<User>();
 
     public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();

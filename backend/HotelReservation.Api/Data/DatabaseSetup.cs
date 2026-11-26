@@ -44,8 +44,9 @@ public static class DatabaseSetup
 
         switch (options.Provider)
         {
+            // AppDbContext is what the app injects; the provider-specific type decides which migrations apply.
             case DatabaseProvider.Postgres:
-                services.AddDbContext<AppDbContext>(o => o.UseNpgsql(connectionString));
+                services.AddDbContext<AppDbContext, PostgresAppDbContext>(o => o.UseNpgsql(connectionString));
                 break;
 
             case DatabaseProvider.MySql:
@@ -64,7 +65,7 @@ public static class DatabaseSetup
                         $"Database:ServerVersion '{options.ServerVersion}' is not valid. Use a version and type, e.g. '10.4.12-mariadb' or '8.0.36-mysql'.", ex);
                 }
 
-                services.AddDbContext<AppDbContext>(o => o.UseMySql(connectionString, serverVersion));
+                services.AddDbContext<AppDbContext, MySqlAppDbContext>(o => o.UseMySql(connectionString, serverVersion));
                 break;
         }
 
