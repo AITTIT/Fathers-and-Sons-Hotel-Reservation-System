@@ -1,6 +1,6 @@
 # Hotel Reservation Backend
 
-ASP.NET Core (.NET 9) Web API backed by PostgreSQL. It is client-agnostic: the MAUI app and browsers use the same HTTP API.
+ASP.NET Core (.NET 9) Web API backed by PostgreSQL (default) or MySQL/MariaDB, chosen by configuration. It is client-agnostic: the MAUI app and browsers use the same HTTP API.
 
 > **Status:** early development. Auth, users, hotels and rooms are implemented. Reservations and payments are out of scope for now. The API and database run together in Docker Compose.
 
@@ -53,7 +53,7 @@ docker compose --profile mariadb down -v   # wipe both databases; without --prof
 | Test page against it | http://localhost:5500/?api=http://localhost:5048 |
 | MariaDB | `localhost:3306`, db `hotel_reservation`, `hotel`/`hotel` (root: `root`/`root`) |
 
-The first MariaDB start takes 20–30 seconds; the API waits for its healthcheck. The API picks the database with `Database:Provider` (`Postgres` or `MySql`, for both MySQL and MariaDB) and `Database:ServerVersion` (e.g. `10.4.12-mariadb`, `8.4.13-mysql`); see the `api-mariadb` service.
+The first MariaDB start takes 20–30 seconds; the API waits for its healthcheck. See [Database](#database) for how the API picks its database and how to use an external one.
 
 ## Integration tests
 
@@ -71,7 +71,7 @@ To run only the room endpoint tests:
 dotnet test .\backend\HotelReservation.Api.Tests\HotelReservation.Api.Tests.csproj --filter "FullyQualifiedName~RoomEndpointTests"
 ```
 
-Docker Compose does not need to be running for these tests. If Docker is unavailable, Testcontainers cannot start the temporary PostgreSQL database.
+Docker Compose does not need to be running for these tests. If Docker is unavailable, Testcontainers cannot start the temporary PostgreSQL database. The tests run on PostgreSQL only; MySQL/MariaDB support was verified by hand (see [Database](#database)).
 
 To debug the API from the IDE instead, stop the container (both use port 5047) and run it yourself against the same database:
 
@@ -103,22 +103,94 @@ General conventions:
 
 ## Database
 
-Schema changes are EF Core migrations ([`Migrations/`](HotelReservation.Api/Migrations)), applied automatically at startup. The design is in [`../Documentation/DatabaseSchema.md`](../Documentation/DatabaseSchema.md).
+The schema is described in [`../Documentation/DatabaseSchema.md`](../Documentation/DatabaseSchema.md). The API creates and updates it itself with EF Core migrations at startup.
+
+### Supported databases
+
+| Database | Provider | Verified with |
+|---|---|---|
+| PostgreSQL 13 or newer | `Postgres` (default) | 17 (Compose, integration tests) |
+| MariaDB 10.4 or newer | `MySql` | 10.4.12 (Compose `mariadb` profile and the school server) |
+| MySQL 8.0.16 or newer | `MySql` | 8.4.13 (one-off container) |
+
+MySQL and MariaDB share the `MySql` provider (Pomelo); `Database:ServerVersion` tells them apart. MySQL older than 8.0.16 accepts but does not enforce check constraints, so the database would no longer reject an invalid role, capacity or price.
+
+### Choosing the database
+
+| Setting (env var) | Value |
+|---|---|
+| `Database:Provider` (`Database__Provider`) | `Postgres` (default) or `MySql` |
+| `Database:ServerVersion` (`Database__ServerVersion`) | `MySql` only, required: version and type, e.g. `10.4.12-mariadb` or `8.4.13-mysql`. Run `SELECT VERSION();` on the server (MariaDB may report `5.5.5-10.4.12-MariaDB…`; use the part after `5.5.5-`) |
+| `ConnectionStrings:Default` (`ConnectionStrings__Default`) | See below |
+
+Connection string formats:
+
+```text
+Postgres: Host=<host>;Port=5432;Database=<db>;Username=<user>;Password=<password>
+MySql:    Server=<host>;Port=3306;Database=<db>;User=<user>;Password=<password>
+```
+
+An unknown provider, a missing connection string or a missing/invalid server version stops the API at startup with a message saying which.
+
+### Database requirements
+
+- The database must already exist; the API creates the tables, not the database.
+- The API's database user needs full rights on that database: creating and altering tables, indexes and foreign keys, plus reading and writing data. A per-user school account with `ALL PRIVILEGES` on its own databases is enough.
+- **MySQL/MariaDB:** create the database with character set `utf8mb4`, collation `utf8mb4_unicode_520_ci`. The API sets both on its own tables anyway, but avoid the `latin1` server default and the 3-byte `utf8`. Comparisons are case- and accent-insensitive there (`Malmo` matches `Malmö`); on PostgreSQL they are not.
+- The API must be able to reach the server. At startup it tries to connect 10 times, 2 seconds apart, logging `Database not ready` with the reason each time, then stops. Migration errors are not retried.
+
+### Using an external database
+
+For example the school MariaDB (`mariadb.vamk.fi`, reachable on campus or over the school VPN). Keep the connection string in environment variables or user secrets, never in a committed file:
 
 ```powershell
 cd backend\HotelReservation.Api
-dotnet ef migrations add <Name> --configuration Release    # after changing entities or AppDbContext
+$pw = Read-Host "Database password" -AsSecureString
+$env:ConnectionStrings__Default = "Server=mariadb.vamk.fi;Port=3306;Database=<db>;User=<user>;Password=" + [Net.NetworkCredential]::new('', $pw).Password
+$env:Database__Provider = "MySql"
+$env:Database__ServerVersion = "10.4.12-mariadb"
+$env:ASPNETCORE_ENVIRONMENT = "Development"
+$env:ASPNETCORE_URLS = "http://localhost:5998"
+dotnet run --no-launch-profile
 ```
 
-Reset the database (**deletes all data**):
+The settings last only for that window. Use the server's public name: the internal address a web database tool shows (such as `172.17.x.x`) is not reachable from outside. Point the test page at it with `http://localhost:5500/?api=http://localhost:5998`.
+
+### Migrations
+
+Each provider has its own migrations: [`Migrations/Postgres`](HotelReservation.Api/Migrations/Postgres) (`PostgresAppDbContext`) and [`Migrations/MySql`](HotelReservation.Api/Migrations/MySql) (`MySqlAppDbContext`). Both are subclasses of `AppDbContext`, which holds the model; the rest of the API only uses `AppDbContext`.
+
+**Until launch there is exactly one migration per provider, `InitialCreate`.** After changing entities or `AppDbContext`, regenerate it instead of adding a migration, then recreate your local databases:
 
 ```powershell
 cd backend
-docker compose down -v
-docker compose up -d
+./scripts/migrations.ps1                                  # regenerate InitialCreate for both providers
+docker compose --profile mariadb down -v                  # recreate local databases (seed data comes back)
+docker compose --profile mariadb up -d --build
 ```
 
-Local Postgres: `localhost:5432`, database `hotel_reservation`, user/password `postgres`/`postgres`. Development credentials only.
+After launch, databases hold real data, so schema changes must become normal migrations added on top of `InitialCreate`.
+
+Other script modes (no database needed for `-Check`):
+
+```powershell
+./scripts/migrations.ps1 -Check     # fails if the model changed but the migrations did not, for either provider
+./scripts/migrations.ps1 -Apply -Provider MySql -ServerVersion 10.4.12-mariadb -Connection "Server=...;Database=...;User=...;Password=..."
+```
+
+The script uses the `dotnet-ef` version pinned in [`dotnet-tools.json`](dotnet-tools.json) and works in Windows PowerShell and `pwsh`. Without a connection, `dotnet ef` uses the design-time factories in `Data/ProviderDbContexts.cs`, so it needs no database or secrets.
+
+### Local databases
+
+Reset (**deletes all data**; the admin and demo data are seeded again):
+
+```powershell
+cd backend
+docker compose down -v                        # PostgreSQL only
+docker compose --profile mariadb down -v      # PostgreSQL and MariaDB
+```
+
+Local Postgres: `localhost:5432`, database `hotel_reservation`, user/password `postgres`/`postgres`. Local MariaDB: `localhost:3306`, same database name, `hotel`/`hotel` (root `root`/`root`). Development credentials only.
 
 ### Default admin
 
@@ -142,7 +214,9 @@ With `Seed:Demo=true` (`Seed__Demo`, on in `docker-compose.yml`), an empty datab
 
 | Key | Purpose |
 |---|---|
-| `ConnectionStrings:Default` | Npgsql connection string |
+| `Database:Provider` | `Postgres` (default) or `MySql`. See [Choosing the database](#choosing-the-database) |
+| `Database:ServerVersion` | Required for `MySql`, e.g. `10.4.12-mariadb` |
+| `ConnectionStrings:Default` | Connection string for the chosen provider. **Required** |
 | `Jwt:Key` | Signing key. **Required, at least 32 characters** |
 | `Jwt:Issuer`, `Jwt:Audience`, `Jwt:ExpiryMinutes`, `Jwt:RefreshTokenDays` | Optional; default `HotelReservation.Api`, `HotelReservation.Client`, `15`, `30` |
 | `Cors:AllowedOrigins` | Browser origins allowed to call the API. Empty means no cross-origin access. MAUI is unaffected |
@@ -185,12 +259,12 @@ Payments:
 
 ## Not done yet
 
-- A production profile (no dev settings, HTTPS reverse proxy, unpublished Postgres port)
+- A production profile (no dev settings, HTTPS reverse proxy, unpublished database ports)
 - Payment provider and refunds (simulated?)
 - Email delivery for password reset
 - Notifications table (optional in the schema doc)
 
 ## Known issues
-- Everything is Development-only. The credentials, the dev reset token and the docs are for local use, and Postgres is published on 5432. It's fine for development and not for deployment.
+- Everything is Development-only. The credentials, the dev reset token and the docs are for local use, and the databases are published on 5432 (and 3306 with the `mariadb` profile). It's fine for development and not for deployment.
 - Password reset only works in Development, because it returns a dev token instead of sending email.
 - The GitHub Actions workflow runs the backend integration tests on every push; pull-request-specific checks are not configured yet.

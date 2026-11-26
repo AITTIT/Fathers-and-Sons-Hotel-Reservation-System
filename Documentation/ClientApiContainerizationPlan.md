@@ -4,8 +4,8 @@
 
 - **Client:** .NET MAUI, organized around feature-specific Views, ViewModels, models, and service abstractions.
 - **Backend:** ASP.NET Core Web API on .NET 9. Business rules and persistence belong in the API, not the MAUI client.
-- **Persistence:** PostgreSQL 17, accessed by EF Core through Npgsql. The API applies migrations at startup.
-- **Local orchestration:** Docker Compose starts PostgreSQL, the API, and a small Nginx-hosted browser test client. PostgreSQL data is stored in the `postgres-data` named volume.
+- **Persistence:** PostgreSQL 17 by default, accessed by EF Core through Npgsql. MySQL 8.0.16+ and MariaDB 10.4+ are also supported (Pomelo provider), selected with `Database:Provider`. The API applies migrations at startup.
+- **Local orchestration:** Docker Compose starts PostgreSQL, the API, and a small Nginx-hosted browser test client. PostgreSQL data is stored in the `postgres-data` named volume. The optional `mariadb` profile adds MariaDB 10.4.12 and a second API on port 5048.
 - **Authentication:** The API implements JWT access tokens, rotating refresh tokens, password reset tokens, and Customer/Staff/Admin authorization. The current MAUI authentication service is still an in-memory mock.
 
 SQLite is not used by the current application.
@@ -23,10 +23,10 @@ ASP.NET Core Web API
   Authentication, authorization, validation, hotel/room/user endpoints
   EF Core migrations and data access
                 |
-                | Npgsql
+                | Npgsql (default) or Pomelo
                 v
-PostgreSQL 17
-  Docker Compose service; postgres-data named volume
+PostgreSQL 17, or MySQL/MariaDB
+  Docker Compose services; postgres-data / mariadb-data named volumes
 ```
 
 The API is client-agnostic: browser and MAUI clients use the same HTTP endpoints. The API currently exposes health, authentication, user, hotel, and room routes. Reservations, payments, and notification delivery are not implemented.
@@ -45,8 +45,8 @@ The API is client-agnostic: browser and MAUI clients use the same HTTP endpoints
 
 - API endpoints enforce validation and role-based access.
 - EF Core entities, `AppDbContext`, and migrations are owned by `backend/HotelReservation.Api`.
-- PostgreSQL connection configuration is supplied through `ConnectionStrings:Default`.
-- The Compose API waits for PostgreSQL health and applies migrations during startup.
+- The database is chosen with `Database:Provider` (`Postgres` or `MySql`, plus `Database:ServerVersion` for MySQL/MariaDB), and its connection through `ConnectionStrings:Default`. Each provider has its own migrations.
+- The Compose APIs wait for their database's health check and apply migrations during startup.
 
 ### Shared contracts
 
@@ -69,6 +69,8 @@ The Compose stack exposes:
 | OpenAPI document (Development only) | `http://localhost:5047/openapi/v1.json` |
 | Browser test client | `http://localhost:5500` |
 | PostgreSQL | `localhost:5432` |
+| API on MariaDB (`mariadb` profile) | `http://localhost:5048` |
+| MariaDB (`mariadb` profile) | `localhost:3306` |
 
 Development Compose values, including credentials and signing key, are for local use only. Do not reuse them outside development. `docker compose down -v` removes the named database volume and permanently deletes its data.
 
@@ -81,7 +83,7 @@ For backend setup, API behavior, test commands, configuration, migration command
 Implemented:
 
 - ASP.NET Core API and PostgreSQL Compose service.
-- PostgreSQL persistence, EF Core migrations, startup migration application, and development data seeding.
+- PostgreSQL and MySQL/MariaDB persistence, per-provider EF Core migrations, startup migration application, and development data seeding.
 - API authentication/authorization and user, hotel, and room endpoints.
 - MAUI room-search and staff-dashboard screens, plus mock sign-in/registration.
 
