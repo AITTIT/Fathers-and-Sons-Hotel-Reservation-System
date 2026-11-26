@@ -4,7 +4,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace HotelReservation.Api.Migrations
+namespace HotelReservation.Api.Migrations.Postgres
 {
     /// <inheritdoc />
     public partial class InitialCreate : Migration
@@ -37,7 +37,7 @@ namespace HotelReservation.Api.Migrations
                 {
                     Id = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    Email = table.Column<string>(type: "text", nullable: false),
+                    Email = table.Column<string>(type: "character varying(254)", maxLength: 254, nullable: false),
                     PasswordHash = table.Column<string>(type: "text", nullable: false),
                     FirstName = table.Column<string>(type: "text", nullable: false),
                     LastName = table.Column<string>(type: "text", nullable: false),
@@ -59,7 +59,7 @@ namespace HotelReservation.Api.Migrations
                     Id = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     HotelId = table.Column<int>(type: "integer", nullable: false),
-                    RoomNumber = table.Column<string>(type: "text", nullable: false),
+                    RoomNumber = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
                     RoomType = table.Column<string>(type: "text", nullable: false),
                     Capacity = table.Column<int>(type: "integer", nullable: false),
                     PricePerNight = table.Column<decimal>(type: "numeric(10,2)", precision: 10, scale: 2, nullable: false),
@@ -87,7 +87,7 @@ namespace HotelReservation.Api.Migrations
                     Id = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     UserId = table.Column<int>(type: "integer", nullable: false),
-                    TokenHash = table.Column<string>(type: "text", nullable: false),
+                    TokenHash = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: false),
                     ExpiresAtUtc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     UsedAtUtc = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
                     CreatedAtUtc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
@@ -110,7 +110,7 @@ namespace HotelReservation.Api.Migrations
                     Id = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     UserId = table.Column<int>(type: "integer", nullable: false),
-                    TokenHash = table.Column<string>(type: "text", nullable: false),
+                    TokenHash = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: false),
                     ExpiresAtUtc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     UsedAtUtc = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
                     RevokedAtUtc = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),

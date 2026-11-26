@@ -6,6 +6,8 @@ namespace HotelReservation.Api.Features.Rooms;
 
 public class Room
 {
+    public const int RoomNumberMaxLength = 20;
+
     public int Id { get; set; }
 
     public int HotelId { get; set; }

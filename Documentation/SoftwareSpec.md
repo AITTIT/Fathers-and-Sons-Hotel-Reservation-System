@@ -276,7 +276,7 @@ Payment processing is not implemented in the current system. A mock provider may
 
  - **.NET MAUI client** for presentation and client-side interaction, using MVVM.
  - **ASP.NET Core Web API (.NET 9)** for authentication, authorization, validation, business rules, and data access.
- - **PostgreSQL 17** for persistence, accessed through EF Core and Npgsql.
+ - **PostgreSQL 17** for persistence by default, accessed through EF Core and Npgsql. MySQL 8.0.16+ and MariaDB 10.4+ (for example the school server) are also supported, selected by configuration.
 
  The local Docker Compose stack runs PostgreSQL, the API, and an Nginx-hosted browser test client. PostgreSQL data persists in the `postgres-data` named volume. SQLite is not used.
 
@@ -298,7 +298,7 @@ Payment processing is not implemented in the current system. A mock provider may
 
  The backend is beyond the original unauthenticated skeleton milestone:
 
- - PostgreSQL schema managed by EF Core migrations, applied at API startup.
+ - Database schema managed by EF Core migrations (one set per provider: PostgreSQL and MySQL/MariaDB), applied at API startup.
  - API endpoints for registration/login, token refresh/logout, password reset, users, hotels, and rooms.
  - JWT authentication and Customer/Staff/Admin authorization for protected operations.
  - Development-only admin/demo-data seeding and interactive API documentation.

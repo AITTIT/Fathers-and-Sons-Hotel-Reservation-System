@@ -117,6 +117,8 @@ public static class RoomEndpoints
     {
         var errors = new Dictionary<string, string[]>();
         if (string.IsNullOrWhiteSpace(r.RoomNumber)) errors[nameof(r.RoomNumber)] = ["Room number is required."];
+        else if (r.RoomNumber.Trim().Length > Room.RoomNumberMaxLength)
+            errors[nameof(r.RoomNumber)] = [$"Room number can be at most {Room.RoomNumberMaxLength} characters."];
         if (string.IsNullOrWhiteSpace(r.RoomType)) errors[nameof(r.RoomType)] = ["Room type is required."];
         if (r.Capacity < 1) errors[nameof(r.Capacity)] = ["Capacity must be at least 1."];
         if (r.PricePerNight < 0) errors[nameof(r.PricePerNight)] = ["Price cannot be negative."];
